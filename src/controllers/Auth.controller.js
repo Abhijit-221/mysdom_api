@@ -2,6 +2,7 @@ const { validationResult } = require("express-validator");
 const UserSchema = require("../models/UserSchema");
 const { ResponseCodes } = require("../utils/constant");
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 
 module.exports = {
     /*
@@ -152,6 +153,109 @@ module.exports = {
                 message: 'Server error'
                 });
         }
-   }
+   },
+   /*
+    * @route POST /api/auth/register
+    * @desc Login a new user
+    * @authentication 
+    */
+   updateUser:async (req,res)=>{
+        console.log('Update User API.....');
+        try {
+            let uploadedFilePath = req.file ? req.file : null;
+            // console.log('Request file:', uploadedFilePath);
+            const validationError = validationResult(req);
+            if (!validationError.isEmpty()) {
+                if(uploadedFilePath){
+                    // Delete the uploaded file if validation fails
+                    await fs.unlinkSync(uploadedFilePath.path);
+                }
+            return res.status(ResponseCodes.BAD_REQUEST).json({ 
+                success: ResponseCodes.BAD_REQUEST,
+                errors: validationError.array(),
+                message: 'Validation failed' 
+            });
+            }
+            const { id,username,phone,gender,isActive } = req.body;
+            //let check user exist or not
+            let user = await UserSchema.findOne({ _id:id,is_deleted: false });
+            if (!user) {
+                if(uploadedFilePath){
+                    // Delete the uploaded file if validation fails
+                    await fs.unlinkSync(uploadedFilePath.path);
+                }
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: 'User not found',
+                    message: 'User not found'
+                });
+            }
+            //let validate the update data must be updated by same user or admin
+            if(req.user.role !== 'admin' && req.user._id.toString() !== id){
+                if(uploadedFilePath){
+                    // Delete the uploaded file if validation fails
+                    await fs.unlinkSync(uploadedFilePath.path);
+                }
+                return res.status(ResponseCodes.UNAUTHORIZED).json({
+                    status: ResponseCodes.UNAUTHORIZED,
+                    data: {},
+                    error: 'Unauthorized to update this user',
+                    message: 'Unauthorized to update this user'
+                });
+            }
+            //check if phone no already exists for other user
+            if(phone){
+                let checkPhone = await UserSchema.findOne({ phone, _id: { $ne: id },is_deleted: false });
+                if (checkPhone) {
+                    if(uploadedFilePath){
+                        // Delete the uploaded file if validation fails
+                        await fs.unlinkSync(uploadedFilePath.path);
+                    }
+                    return res.status(ResponseCodes.BAD_REQUEST).json({
+                        status: ResponseCodes.BAD_REQUEST,
+                        data: {},
+                        error: 'Phone number already exists',
+                        message: 'Phone number already exists'
+                    });
+                }
+            }
+            let profilePicture = user.profilePicture;
+            if(uploadedFilePath){
+                profilePicture = uploadedFilePath.path;
+            }
+            let updateData = {
+            ...(username && { username }),
+            ...(phone && { phone }),
+            ...(profilePicture && { profilePicture }),
+            ...(gender && { gender }),
+            isActive: req.user.role==='admin' ? isActive : user.isActive
+            };
+            //let update user
+            let updatedUser = await UserSchema.findByIdAndUpdate(id, updateData, { new: true });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: updatedUser,
+                error: null,
+                message: 'User updated successfully'
+            });
+        }
+        catch (error) {
+            console.error('Error in updateUser controller:', error);
+            if(req.file){
+                    // Delete the uploaded file if validation fails
+                    await fs.unlinkSync(req.file.path);
+                }
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+                });
+        }
+    },
+
+
+
 
 }

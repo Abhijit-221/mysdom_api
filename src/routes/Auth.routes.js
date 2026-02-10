@@ -5,6 +5,7 @@ const { body } = require('express-validator');
 const authController = require('../controllers/Auth.controller');
 const auth = require('../middleware/auth');
 const { authorize } = require('../middleware/roleMiddleware');
+const { uploadSingle } = require('../middleware/uploadFile');
 
 // Validation middleware
 const registerValidation = [
@@ -43,11 +44,39 @@ const addUserValidation = [
   body('password').trim().notEmpty().withMessage('Password is required'),
   body('role').trim().notEmpty().isIn(['user', 'admin', 'moderator']).withMessage('Invalid role')
 ];
+const updateUserValidation = [
+  body('id')
+  .trim()
+  .notEmpty()
+  .withMessage('Invalid user ID'),
+
+body('username')
+  .optional({ checkFalsy: true })
+  .trim()
+  .isLength({ min: 3 })
+  .withMessage('Username must be at least 3 characters'),
+
+body('phone')
+  .optional({ checkFalsy: true })
+  .trim()
+  .isEmail()
+  .normalizeEmail()
+  .withMessage('Invalid email'),
+
+body('gender')
+  .optional({ checkFalsy: true })
+  .trim()
+  .isIn(['male', 'female', 'other'])
+  .withMessage('Invalid gender'),
+
+];
 
 // Public routes
 Authrouter.post('/register', registerValidation, authController.register);
 Authrouter.post('/login', loginValidation, authController.login);
 Authrouter.post('/user-add', auth,authorize('admin'), addUserValidation, authController.addUser);
+Authrouter.post('/user-update', auth,authorize('admin','user'), uploadSingle('profile_pic'), updateUserValidation, authController.updateUser);
+
 // // Protected routes
 // router.get('/me', auth, authController.getMe);
 

@@ -16,7 +16,7 @@ app.use(cors(
         }
 ));
 app.use(helmet());
-
+app.use('/static',express.static('src/assets'));
 // app.get('/', (req, res) => {
 //   res.send('Hello World!')
 // })
