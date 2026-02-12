@@ -3,6 +3,7 @@ const UserSchema = require("../models/UserSchema");
 const { ResponseCodes } = require("../utils/constant");
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+const Client = require("../models/ClientSchema");
 
 module.exports = {
     /*
@@ -124,7 +125,7 @@ module.exports = {
                 message: 'Validation failed' 
             });
             }
-            const { username,email, password,role } = req.body;
+            const { username,email, password,role,client } = req.body;
             //let check user exist or not
             let user = await UserSchema.findOne({ email,is_deleted: false });
             if (user) {
@@ -135,8 +136,20 @@ module.exports = {
                     message: 'Email already exists'
                 });
             }
+            //let check client exist or not
+            if(client){
+                let checkClient = await Client.findOne({ _id:client,is_deleted: false });
+                if (!checkClient) {
+                    return res.status(ResponseCodes.BAD_REQUEST).json({
+                        status: ResponseCodes.BAD_REQUEST,
+                        data: {},
+                        error: 'Invalid client ID',
+                        message: 'Invalid client ID'
+                    });
+                }
+            }
             //let create new user
-            let newUser = await UserSchema.create({username, email, password,role });
+            let newUser = await UserSchema.create({username, email, password,role,...client && {client} });
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
                 data: newUser,

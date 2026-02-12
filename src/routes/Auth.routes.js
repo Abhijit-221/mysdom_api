@@ -42,7 +42,11 @@ const addUserValidation = [
   body('username').trim().notEmpty().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
   body('email').trim().notEmpty().isEmail().normalizeEmail().withMessage('Invalid email'),
   body('password').trim().notEmpty().withMessage('Password is required'),
-  body('role').trim().notEmpty().isIn(['user', 'admin', 'moderator']).withMessage('Invalid role')
+  body('role').trim().notEmpty().isIn(['user', 'admin', 'moderator']).withMessage('Invalid role'),
+  body('client').optional({ checkFalsy: true })
+  .trim()
+  .isMongoId()
+  .withMessage('Invalid client ID'),
 ];
 const updateUserValidation = [
   body('id')

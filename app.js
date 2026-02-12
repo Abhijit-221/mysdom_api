@@ -23,9 +23,10 @@ app.use('/static',express.static('src/assets'));
 
 // Import routes
 const authRoutes = require('./src/routes/Auth.routes');
-
+const clientRoutes = require('./src/routes/Client.routes');
 // Use routes
 app.use('/api/v1/mysdom/auth', authRoutes);
+app.use('/api/v1/mysdom/client', clientRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

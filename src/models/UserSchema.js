@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'admin', 'moderator'],
         // default: 'user'
     },
+    client:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Client'
+    },
     permissions: [{
         type: String,
         enum: ['read', 'write', 'delete', 'manage_users']
