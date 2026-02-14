@@ -107,7 +107,7 @@ module.exports={
                     slaDays,
                     updatedBy: req.user._id
                 },
-                { new: true }
+                
             );
             if (!updatedClient) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
