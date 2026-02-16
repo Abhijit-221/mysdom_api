@@ -63,9 +63,8 @@ module.exports={
         }
     },
     /*
-    * @route POST /api/v1/mysdom/client/add
-    * @desc Add a new client
-    * @desc Login a new user
+    * @route POST /api/v1/mysdom/client/update
+    * @desc update existing client
     * @authentication  true [admin]
     */
    updateClient:async (req,res)=>{

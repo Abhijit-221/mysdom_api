@@ -78,10 +78,10 @@ body('gender')
 // Public routes
 Authrouter.post('/register', registerValidation, authController.register);
 Authrouter.post('/login', loginValidation, authController.login);
-Authrouter.post('/user-add', auth,authorize('admin'), addUserValidation, authController.addUser);
-Authrouter.post('/user-update', auth,authorize('admin','user'), uploadSingle('profile_pic'), updateUserValidation, authController.updateUser);
+Authrouter.post('/user-add', auth,authorize('superadmin','admin'), addUserValidation, authController.addUser);
+Authrouter.post('/user-update', auth,authorize('superadmin','admin','user'), uploadSingle('profile_pic'), updateUserValidation, authController.updateUser);
 
 // // Protected routes
-// router.get('/me', auth, authController.getMe);
+Authrouter.get('/user-list', auth,authorize('superadmin','admin','user'),authController.getAllUsers);
 
 module.exports = Authrouter;

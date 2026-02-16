@@ -267,8 +267,36 @@ module.exports = {
                 });
         }
     },
-
-
-
-
+    /**
+     * @route GET /api/auth/users
+     * @desc Get all users
+     * @authentication
+     */
+    getAllUsers: async (req,res)=>{
+        console.log('Get All Users API.....');
+        try {
+            let users;
+            console.log('User role:', req.user.client);
+            if(['admin','superadmin'].includes(req.user.role)){
+                users = await UserSchema.find({is_deleted: false }).select('-password');
+            }else{
+                users = await UserSchema.find({client:req.user.client,is_deleted: false }).select('-password');
+            }
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: users,
+                error: null,
+                message: 'Users fetched successfully'
+            });
+        }
+        catch (error) {
+            console.error('Error in getAllUsers controller:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+                });
+        }
+    }
 }

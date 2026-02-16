@@ -16,13 +16,14 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Find user
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id,{is_deleted:false}).select('-password');
     
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
     // Attach user to request
+    // console.log('Authenticated user:', user);
     req.user = user;
     next();
   } catch (error) {

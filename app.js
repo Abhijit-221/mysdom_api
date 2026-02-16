@@ -26,11 +26,13 @@ const authRoutes = require('./src/routes/Auth.routes');
 const clientRoutes = require('./src/routes/Client.routes');
 const serviceRoutes = require('./src/routes/Service.routes');
 const clientServiceRoutes = require('./src/routes/ClientService.routes');
+const bgvRequestRoutes = require('./src/routes/BGVRequest.routes');
 // Use routes
 app.use('/api/v1/mysdom/auth', authRoutes);
 app.use('/api/v1/mysdom/client', clientRoutes);
 app.use('/api/v1/mysdom/service', serviceRoutes);
 app.use('/api/v1/mysdom/client-service',clientServiceRoutes);
+app.use('/api/v1/mysdom/bgvrequest', bgvRequestRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
