@@ -1,4 +1,5 @@
 
+const mongoose = require('mongoose');
 const requestServiceSchema = new mongoose.Schema({
   requestId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -18,7 +19,11 @@ const requestServiceSchema = new mongoose.Schema({
   },
 
   remarks: String,
-  completedAt: Date
+  completedAt: Date,
+  is_deleted:{
+    type: Boolean,
+    default: false
+  }
 
 }, { timestamps: true });
 

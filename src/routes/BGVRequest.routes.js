@@ -32,6 +32,8 @@ router.post('/create', auth, authorize('user'), createBGVRequestValidation, bgvR
 
 // Route to update an existing BGV request
 router.put('/update', auth, authorize('admin','user'), updateBGVRequestValidation, bgvRequestController.updateBGVRequest);
+router.put('/service/add', auth, authorize('user'), updateBGVRequestValidation, bgvRequestController.addBGVRequestServices);
+
 
 
 module.exports = router;
