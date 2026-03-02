@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 const helmet = require('helmet');
 const dbConfig = require('./src/config/db.config');
+const path =  require('path');
 
 app.use(express.json());
 const port = process.env.PORT || 3000;
@@ -16,7 +17,7 @@ app.use(cors(
         }
 ));
 app.use(helmet());
-app.use('/static',express.static('src/assets'));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 // app.get('/', (req, res) => {
 //   res.send('Hello World!')
 // })

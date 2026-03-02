@@ -22,6 +22,8 @@ router.post('/add', auth, authorize('admin', 'superadmin'), addServiceValidation
 router.get('/list', auth, authorize('admin', 'user', 'superadmin'), ServiceController.getServiceList);
 router.get('/:id', auth, authorize('admin', 'user', 'superadmin'), ServiceController.getServiceById);
 router.put('/update', auth, authorize('admin', 'superadmin'),updateServiceValidation, ServiceController.updateService);
+router.get('/get', auth, authorize('admin', 'superadmin','user'),updateServiceValidation, ServiceController.getServices);
+
 // router.delete('/delete/:id', auth, authorize('admin','superadmin'), ServiceController.deleteService);
 
 module.exports = router;

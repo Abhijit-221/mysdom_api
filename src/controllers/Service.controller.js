@@ -68,10 +68,14 @@ module.exports = {
             page = page || 1;
             limit = limit || 10;
             let skip = (page - 1) * limit;
+            
             const query = {
                 is_deleted: false,
                 
             };
+            if(!['admin','superadmin'].includes(req.user.role)){
+                query.isActive=true
+            }
             if(search){
                 query.name = { $regex: search, $options: 'i' };
             }
@@ -114,9 +118,19 @@ module.exports = {
                 });
             }
             const { id, name,isActive, description } = req.body;
+            //let check service on that id already exist or not
+            const checkService  = await Service.findOne({_id:id,is_deleted:false});
+            if(!checkService){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:"Service not found, invalid service id",
+                    message:"Service not found"
+                })
+            }
             //let check if service with same name already exists
             if(name){
-                const existingService = await Service.findOne({ name: name, _id: { $ne: id } });
+                const existingService = await Service.findOne({ name: name,is_deleted:false, _id: { $ne: id } });
                 if (existingService) {
                     return res.status(ResponseCodes.CONFLICT).json({
                         status: ResponseCodes.CONFLICT,
@@ -137,6 +151,7 @@ module.exports = {
             const updatedService = await Service.findByIdAndUpdate(
                 id,
                 updateData,
+                {new:true}
             );
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
@@ -195,4 +210,35 @@ module.exports = {
             });
         }
     },
+    /*
+    * @route GET /api/v1/mysdom/services/
+    * @desc GET a service
+    * @authentication  true [admin]
+    */
+   getServices: async(req,res)=>{
+    console.log('Get service api...');
+    try{
+        //let find the services
+        let services = await Service.find({
+            is_deleted:false,
+            isActive:true
+        });
+        return res.status(ResponseCodes.SUCCESS).json({
+            status:ResponseCodes.SUCCESS,
+            data:services,
+            error:{},
+            message:"Services fetched"
+        })
+    }
+    catch(error){
+        console.log('Internal server error:',error);
+        return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+    }
+   }
+
 }

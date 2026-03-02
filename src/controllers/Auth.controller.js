@@ -34,7 +34,7 @@ module.exports = {
                 });
             }
             //let create new user
-            let newUser = await UserSchema.create({ username, email, password,role: 'admin' });
+            let newUser = await UserSchema.create({ username, email, password,role: 'superadmin' });
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
                 data: newUser,
@@ -205,13 +205,13 @@ module.exports = {
                 });
             }
             //let validate the update data must be updated by same user or admin
-            if(req.user.role !== 'admin' && req.user._id.toString() !== id){
+            if(!['superadmin','admin'].includes(req.user.role) && req.user._id.toString() !== id){
                 if(uploadedFilePath){
                     // Delete the uploaded file if validation fails
                     await fs.unlinkSync(uploadedFilePath.path);
                 }
-                return res.status(ResponseCodes.UNAUTHORIZED).json({
-                    status: ResponseCodes.UNAUTHORIZED,
+                return res.status(ResponseCodes.FORBIDDEN).json({
+                    status: ResponseCodes.FORBIDDEN,
                     data: {},
                     error: 'Unauthorized to update this user',
                     message: 'Unauthorized to update this user'
@@ -242,7 +242,7 @@ module.exports = {
             ...(phone && { phone }),
             ...(profilePicture && { profilePicture }),
             ...(gender && { gender }),
-            isActive: req.user.role==='admin' ? isActive : user.isActive
+            isActive: ['superadmin','admin'].includes(req.user.role) ? isActive : user.isActive
             };
             //let update user
             let updatedUser = await UserSchema.findByIdAndUpdate(id, updateData, { new: true });
@@ -275,21 +275,88 @@ module.exports = {
     getAllUsers: async (req,res)=>{
         console.log('Get All Users API.....');
         try {
-            let users;
+            let users,count=0;
             console.log('User role:', req.user.client);
+            let {page,limit,search} = req.query;
+            page = parseInt(page)||1,
+            limit = parseInt(limit)||10;
+            let skip = page*limit-limit;
+            let searchquery = {};
+            if(search){
+                searchquery = {
+                     $or: [
+                        { username: { $regex: search, $options: 'i' } },
+                        { email: { $regex: search, $options: 'i' } },
+                        // { role: { $regex: search, $options: 'i' } }
+                    ]
+                }
+            }
             if(['admin','superadmin'].includes(req.user.role)){
-                users = await UserSchema.find({is_deleted: false }).select('-password');
+                users = await UserSchema.find({is_deleted: false,...searchquery }).select('-password').skip(skip).limit(limit);
+                count = await UserSchema.countDocuments({is_deleted: false,...searchquery });
             }else{
-                users = await UserSchema.find({client:req.user.client,is_deleted: false }).select('-password');
+                users = await UserSchema.find({client:req.user.client,is_deleted: false,...searchquery }).select('-password').skip(skip).limit(limit);
+                count = await UserSchema.countDocuments({client:req.user.client,is_deleted: false,...searchquery });
             }
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
-                data: users,
+                data: {users,count},
                 error: null,
                 message: 'Users fetched successfully'
             });
         }
         catch (error) {
+            console.error('Error in getAllUsers controller:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+                });
+        }
+    },
+    /**
+     * @route GET /api/auth/users/get/details
+     * @desc Get all users
+     * @authentication
+     */
+
+    getUserDetails: async(req,res)=>{
+        try{
+
+            let user_id = req.params.id;
+
+            if(!user_id){
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status:ResponseCodes.BAD_REQUEST,
+                    data:{},
+                    error:"User id must be required",
+                    message:"User id required."
+
+                })
+            }
+            //let get user
+            let user = await UserSchema.findOne({
+                _id:user_id,
+                is_deleted:false
+            });
+            if(!user){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:"User not found",
+                    message:"User not found"
+                })
+            }
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:user,
+                error:{},
+                message:"User details fetched."
+            })
+
+        }
+        catch(error){
             console.error('Error in getAllUsers controller:', error);
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
                 status: ResponseCodes.INTERNAL_SERVER_ERROR,
