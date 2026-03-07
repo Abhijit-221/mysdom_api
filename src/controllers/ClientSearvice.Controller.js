@@ -1,9 +1,10 @@
 const { validationResult } = require('express-validator');
 const { ResponseCodes } = require('../utils/constant');
 const ClientService = require('../models/ClienServiceSchema');
-const UserSchema = require('../models/UserSchema');
-const ClientSchema = require('../models/ClientSchema');
-const ServiceSchema = require('../models/ServiceSchema');
+const User = require('../models/UserSchema');
+const Client = require('../models/ClientSchema');
+const Service = require('../models/ServiceSchema');
+const { Op } = require('sequelize');
 module.exports = {
     /*
    * @route PIST /api/v1/mysdom/client-service/add
@@ -27,11 +28,13 @@ module.exports = {
 
             //let check if role user with same clientId then it should allow
             if (req.user.role === 'user') {
-                let getUser = await UserSchema.findOne({
-                    _id: req.user._id,
-                    clientId: req.body.clientId,
-                    is_deleted: false,
-                    isActive: true
+                let getUser = await User.findOne({
+                    where:{
+                        id: req.user._id,
+                        clientId: clientId,
+                        isActive: true
+                    },
+                    raw:true 
                 });
                 if (!getUser) {
                     return res.status(ResponseCodes.UNAUTHORIZED).json({
@@ -44,8 +47,11 @@ module.exports = {
             }
             //let check if client with same service already exists
             const existingClientService = await ClientService.findOne({
-                clientId: clientId,
-                serviceId: serviceId
+                where:{
+                    clientId: clientId,
+                    serviceId: serviceId
+                },
+                raw:true
             });
             if (existingClientService) {
                 return res.status(ResponseCodes.CONFLICT).json({
@@ -56,16 +62,16 @@ module.exports = {
                 });
             }
             //let create new client service
-            const newClientService = new ClientService({
+            const newClientService = {
                 clientId,
                 serviceId,
                 tatDays,
-                createdBy: req.user._id
-            });
-            await newClientService.save();
+                createdBy: req.user.id
+            };
+            let createClientService = await ClientService.create(newClientService);
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
-                data: newClientService,
+                data: createClientService,
                 message: 'Service assigned to client successfully'
             });
         }
@@ -88,72 +94,56 @@ module.exports = {
         console.log('Get Client Service List API.....');
         try {
             let { page, limit, search } = req.query;
-            page = page || 1;
-            limit = limit || 10;
+            page = parseInt(page) || 1;
+            limit = parseInt(limit) || 10;
             console.log('page', page, limit);
             let skip = (page - 1) * limit;
             search = search?.trim();
-            let query = { is_deleted: false };
+            let query = {};
             if(!['admin','superadmin'].includes(req.user.role)){
-                    query.clientId=req.user._id
+                    query.clientId=req.user.id
             }
-            const pipeline = [
-                { $match: query },
-
-                {
-                    $lookup: {
-                        from: 'clients',
-                        localField: 'clientId',
-                        foreignField: '_id',
-                        as: 'clientDetails',
-                    }
-                },
-                { $unwind: '$clientDetails' },
-
-                {
-                    $lookup: {
-                        from: 'services',
-                        localField: 'serviceId',
-                        foreignField: '_id',
-                        as: 'serviceDetails'
-                    }
-                },
-                { $unwind: '$serviceDetails' },
-            ];
-
-            // 🔍 Add search condition dynamically
-            if (search) {
-                pipeline.push({
-                    $match: {
-                        $or: [
-                            { 'clientDetails.companyName': { $regex: search, $options: 'i' } },
-                            { 'serviceDetails.name': { $regex: search, $options: 'i' } }
-                        ]
-                    }
-                });
+            if(search){
+                query[Op.or] = [
+                    { '$client.companyName$': { [Op.like]: `%${search}%` } },
+                    { '$service.name$': { [Op.like]: `%${search}%` } }
+                ]; 
             }
-            let countQiery = [...pipeline];
-            countQiery.push({
-                $group: {
-                    _id: null,
-                    count: { $sum: 1 }
-                },
+            let clientServices = await ClientService.findAll({
+                where: query,
+                include: [
+                    {
+                        model: Client,
+                        as: 'client',
+                    },
+                    {
+                        model: Service,
+                        as: 'service',
+                    }
+                ],
+                // raw: true,
+                // nest: true
+                limit: limit,
+                offset: skip,
             });
-
-            // pagination MUST come after search
-            pipeline.push(
-                { $skip: parseInt(skip) },
-                { $limit: parseInt(limit) }
-            );
-
-            const clientServices = await ClientService.aggregate(pipeline);
-            // console.log('queryCOunt:', countQiery);
-            const clentServiceCount = await ClientService.aggregate(countQiery);
+            let countquery = await ClientService.count({
+                where: query,
+                include: [
+                    {
+                        model: Client,
+                        as: 'client',
+                    },
+                    {
+                        model: Service,
+                        as: 'service',
+                    }
+                ],
+            });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: {
                     clientServices,
-                    count: clentServiceCount[0]?.count,
+                    count: countquery,
                 },
                 message: 'Client Service list fetched successfully'
             });
@@ -189,8 +179,7 @@ module.exports = {
 
             //let check the clienservice exist or not 
             let checkClientSevice = await ClientService.findOne({
-                _id:id,
-                is_deleted:false
+               where: {id:id},raw:true
             });
             if(!checkClientSevice){
                 return res.status(ResponseCodes.NOT_FOUND).json({
@@ -201,27 +190,31 @@ module.exports = {
                 })
             }
             //let check if role user with same clientId then it should allow
-            if (req.user.role === 'user') {
-                let getUser = await UserSchema.findOne({
-                    _id: req.user._id,
-                    clientId: req.body.clientId,
-                    is_deleted: false,
-                    isActive: true
-                });
-                if (!getUser) {
-                    return res.status(ResponseCodes.UNAUTHORIZED).json({
-                        status: ResponseCodes.UNAUTHORIZED,
-                        data: {},
-                        error: 'Unauthorized to assign service to this client',
-                        message: 'Unauthorized to assign service to this client'
-                    });
-                }
-            }
+            // if (req.user.role === 'user') {
+            //     let getUser = await User.findOne({
+            //         where:{
+            //             id: req.user.id,
+            //             clientId: req.body.clientId,
+            //             isActive: true
+            //         },
+            //         raw:true
+            //     });
+            //     if (!getUser) {
+            //         return res.status(ResponseCodes.UNAUTHORIZED).json({
+            //             status: ResponseCodes.UNAUTHORIZED,
+            //             data: {},
+            //             error: 'Unauthorized to assign service to this client',
+            //             message: 'Unauthorized to assign service to this client'
+            //         });
+            //     }
+            // }
             if(clientId){
                 //let check client exist or not 
-                let checkClient = await ClientSchema.findOne({
-                    _id:clientId,
-                    is_deleted:false
+                let checkClient = await Client.findOne({
+                    where: {
+                        id:clientId
+                    },
+                    raw:true
                 });
                 if(!checkClient){
                     return res.status(ResponseCodes.NOT_FOUND).json({
@@ -233,9 +226,11 @@ module.exports = {
                 }
             }
             if(serviceId){
-                let checkServices = await ServiceSchema.findOne({
-                    _id:serviceId,
-                    is_deleted:false
+                let checkServices = await Service.findOne({
+                    where: {
+                        id:serviceId,
+                    },
+                    raw:true
                 });
                 if(!checkServices){
                     return res.status(ResponseCodes.NOT_FOUND).json({
@@ -249,9 +244,11 @@ module.exports = {
             //let check if client with same service already exists
             if(clientId||serviceId){
                 const existingClientService = await ClientService.findOne({
-                    clientId: clientId || checkClientSevice.clientId,
-                    serviceId: serviceId || checkClientSevice.serviceId,
-                    is_deleted:false
+                    where: {
+                        clientId: clientId || checkClientSevice.clientId,
+                        serviceId: serviceId || checkClientSevice.serviceId,
+                    },
+                    raw: true
                 });
                 if (existingClientService) {
                     return res.status(ResponseCodes.CONFLICT).json({
@@ -266,15 +263,29 @@ module.exports = {
                 ...clientId && {clientId},
                 ...serviceId && {serviceId},
                 ...tatDays && {tatDays},
-                updatedBy:req.user._id,
+                updatedBy:req.user.id,
                 ...isActive!=undefined && {isActive}
             } ;
             // if(req.user.role = 'admin' || req.user.role)
             console.log(updatedData);
-            let updatedClientService=await ClientService.findByIdAndUpdate({
-                is_deletd:false,
-                _id:id
-            },updatedData);
+            await ClientService.update(updatedData, {
+                where: {
+                    id:id
+                }
+            });
+            let updatedClientService= await ClientService.findOne({
+                where: {id:id},
+                include: [
+                    {
+                        model: Client,
+                        as: 'client',
+                    },
+                    {
+                        model: Service,
+                        as: 'service',
+                    }
+                ]
+            });
             return res.status(ResponseCodes.SUCCESS).json({
                 status:ResponseCodes.SUCCESS,
                 data:updatedClientService,

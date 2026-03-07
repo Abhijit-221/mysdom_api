@@ -2,6 +2,7 @@
 const { validationResult } = require('express-validator');
 const { ResponseCodes } = require('../utils/constant');
 const Service = require('../models/ServiceSchema');
+const { Op } = require('sequelize');
 module.exports = {
     /*
     * @route POST /api/v1/mysdom/service/add
@@ -22,7 +23,11 @@ module.exports = {
             }
             const { name, description } = req.body;
             //let check if service with same name already exists
-            const existingService = await Service.findOne({ name: name });
+            const existingService = await Service.findOne({
+                where: {
+                    name: name,
+                }
+            });
             if (existingService) {
                 return res.status(ResponseCodes.CONFLICT).json({
                     status: ResponseCodes.CONFLICT,
@@ -32,15 +37,16 @@ module.exports = {
                 });
             }
             //let create new service
-            const newService = new Service({
+            const newService = {
                 name,
                 description,
-                createdBy: req.user._id
-            });
-            await newService.save();
+                createdBy: req.user.id,
+                updatedBy: req.user.id
+            };
+            const createdService = await Service.create(newService);
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
-                data: newService,
+                data: createdService,
                 message: 'Service added successfully'
             });
         }
@@ -68,19 +74,33 @@ module.exports = {
             page = page || 1;
             limit = limit || 10;
             let skip = (page - 1) * limit;
-            
+
             const query = {
-                is_deleted: false,
-                
+               
             };
-            if(!['admin','superadmin'].includes(req.user.role)){
-                query.isActive=true
+            if (!['admin', 'superadmin'].includes(req.user.role)) {
+                query.isActive = true
             }
-            if(search){
-                query.name = { $regex: search, $options: 'i' };
+            if (search) {
+                query = {
+                    ...query,
+                    [Op.or]: [
+                        { name: { [Op.like]: `%${search}%` } },
+                        { description: { [Op.like]: `%${search}%` } }
+                    ]
+                };
             }
-            const services = await Service.find(query).skip(skip).limit(limit);
-            const count = await Service.countDocuments(query);
+            const services = await Service.findAll({
+                where: query,
+                offset: skip,
+                limit: parseInt(limit),
+                order: [['createdAt', 'DESC']],
+                raw: true
+            },
+            );
+            const count = await Service.count({
+                where: query
+            });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: {
@@ -105,7 +125,7 @@ module.exports = {
     * @desc Update a service
     * @authentication  true [admin]
     */
-   updateService: async (req, res) => {
+    updateService: async (req, res) => {
         console.log('Update Service API.....');
         try {
             const validationErrors = validationResult(req);
@@ -117,20 +137,20 @@ module.exports = {
                     message: 'Validation failed'
                 });
             }
-            const { id, name,isActive, description } = req.body;
+            const { id, name, isActive, description } = req.body;
             //let check service on that id already exist or not
-            const checkService  = await Service.findOne({_id:id,is_deleted:false});
-            if(!checkService){
+            const checkService = await Service.findOne({ where: { id: id} });
+            if (!checkService) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
-                    status:ResponseCodes.NOT_FOUND,
-                    data:{},
-                    error:"Service not found, invalid service id",
-                    message:"Service not found"
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: "Service not found, invalid service id",
+                    message: "Service not found"
                 })
             }
             //let check if service with same name already exists
-            if(name){
-                const existingService = await Service.findOne({ name: name,is_deleted:false, _id: { $ne: id } });
+            if (name) {
+                const existingService = await Service.findOne({where: { name: name, id: { [Op.ne]: id } }});
                 if (existingService) {
                     return res.status(ResponseCodes.CONFLICT).json({
                         status: ResponseCodes.CONFLICT,
@@ -142,17 +162,17 @@ module.exports = {
             }
             //let update service
             let updateData = {
-                updatedBy: req.user._id,
+                updatedBy: req.user.id,
                 ...name && { name },
                 ...description && { description },
                 ...isActive !== undefined && { isActive }
             }
             console.log('updateData:', updateData);
-            const updatedService = await Service.findByIdAndUpdate(
-                id,
+            await Service.update(
                 updateData,
-                {new:true}
+                { where: { id: id } }
             );
+            const updatedService = await Service.findOne({ where: { id: id }, raw: true });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: updatedService,
@@ -179,13 +199,14 @@ module.exports = {
         try {
             const { id } = req.params;
             let extracondition = {};
-            if(req.user.role === 'user'){
+            if (req.user.role === 'user') {
                 extracondition = { isActive: true }
             }
             const service = await Service.findOne({
-                _id: id,
-                is_deleted: false,
-                ...extracondition
+                where: {
+                    id: id,
+                    ...extracondition
+                }
             });
             if (!service) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
@@ -215,30 +236,32 @@ module.exports = {
     * @desc GET a service
     * @authentication  true [admin]
     */
-   getServices: async(req,res)=>{
-    console.log('Get service api...');
-    try{
-        //let find the services
-        let services = await Service.find({
-            is_deleted:false,
-            isActive:true
-        });
-        return res.status(ResponseCodes.SUCCESS).json({
-            status:ResponseCodes.SUCCESS,
-            data:services,
-            error:{},
-            message:"Services fetched"
-        })
-    }
-    catch(error){
-        console.log('Internal server error:',error);
-        return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+    getServices: async (req, res) => {
+        console.log('Get service api...');
+        try {
+            //let find the services
+            let services = await Service.findAll({
+                where: {
+                    is_deleted: false,
+                    isActive: true
+                }
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: services,
+                error: {},
+                message: "Services fetched"
+            })
+        }
+        catch (error) {
+            console.log('Internal server error:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
                 status: ResponseCodes.INTERNAL_SERVER_ERROR,
                 data: {},
                 error: error.message,
                 message: 'Server error'
             });
+        }
     }
-   }
 
 }

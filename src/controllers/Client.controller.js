@@ -1,6 +1,8 @@
 const { validationResult } = require("express-validator");
 const { ResponseCodes } = require("../utils/constant");
-const Client = require("../models/ClientSchema");
+// const Client = require("../models/ClientSchema");
+const { Op } = require("sequelize");
+const {Client,User} = require("../models/IndexAssociation");
 module.exports={
      /*
     * @route POST /api/v1/mysdom/client/add
@@ -23,10 +25,10 @@ module.exports={
             const { companyName, contactEmail, contactPhone, address, slaDays } = req.body;
             //let check if client with same email or company name already exists
             const existingClient = await Client.findOne({ 
-                $or: [
+               where: { [Op.or]: [
                     { contactEmail: contactEmail },
                     { companyName: companyName }
-                ]
+                ]}
             });
             if (existingClient) {
                 return res.status(ResponseCodes.CONFLICT).json({
@@ -37,18 +39,19 @@ module.exports={
                 });
             }
             //let create new client
-            const newClient = new Client({
+            const newClient = {
                 companyName,
                 contactEmail,
                 contactPhone,
                 address,
                 slaDays,
-                createdBy: req.user._id
-            });
-            await newClient.save();
+                createdBy: req.user.id,
+                updatedBy: req.user.id
+            };
+            const createdClient = await Client.create(newClient);
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
-                data: newClient,
+                data: createdClient,
                 message: 'Client added successfully'
             });
         }
@@ -79,35 +82,45 @@ module.exports={
                     message: 'Validation failed'
                 });
             }
-            const { id, companyName, contactEmail, contactPhone, address, slaDays } = req.body;
+            const inputData = { id, companyName, contactEmail, contactPhone, address, slaDays } = req.body;
+
+            // let check id exist or not
+            const checkClient = await Client.findOne({ where: { id: id},raw:true });
+            if (!checkClient) {
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    message: 'Client not found'
+                });
+            }
             //let check if client with same email or company name already exists
             const existingClient = await Client.findOne({ 
-                $or: [
-                    { contactEmail: contactEmail },
-                    { companyName: companyName }
-                ],
-                _id: { $ne: id } // Exclude the current client being updated
+                where: {
+                    [Op.or]: [
+                        { contactEmail: contactEmail },
+                        { companyName: companyName }
+                    ],
+                    id: { [Op.ne]: id },
+                    
+                },
+                raw: true
             });
             if (existingClient) {
                 return res.status(ResponseCodes.CONFLICT).json({
                     status: ResponseCodes.CONFLICT,
                     data: {},
+                    error: 'Client with same email or company name already exists',
                     message: 'Client with same email or company name already exists'
                 });
             }
             //let update client
-            const updatedClient = await Client.findByIdAndUpdate(
-                id,
-                {
-                    companyName,
-                    contactEmail,
-                    contactPhone,
-                    address,
-                    slaDays,
-                    updatedBy: req.user._id
-                },
-                
+            delete inputData.id;
+            inputData.updatedBy = req.user.id;
+            await Client.update(
+                inputData,
+                { where: { id: id } }
             );
+            const updatedClient = await Client.findOne({ where: { id: id }, raw: true });
             if (!updatedClient) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
@@ -144,10 +157,10 @@ module.exports={
             let searchQuery = {};
             if(search){
                 searchQuery = {
-                    $or: [
-                        { companyName: { $regex: search, $options: 'i' } },
-                        { contactEmail: { $regex: search, $options: 'i' } },
-                        { contactPhone: { $regex: search, $options: 'i' } }
+                    [Op.or]: [
+                        { companyName: { [Op.like]: `%${search}%` } },
+                        { contactEmail: { [Op.like]: `%${search}%` } },
+                        { contactPhone: { [Op.like]: `%${search}%` } }
                     ]
                 };
             }
@@ -159,27 +172,28 @@ module.exports={
             //     is_deleted: false,
             //     ...searchQuery
             // },).skip(skip).limit(limit).sort({ companyName: -1 }).populate('createdBy', 'username email');
-            const clients = await Client.aggregate([
-                { $match: { is_deleted: false, ...searchQuery } },
-                { $sort: { companyName: -1 } },
-                { $skip: skip },
-                { $limit: limit },
-                { $lookup: { from: 'users', localField: 'createdBy', foreignField: '_id',
-                    pipeline:[
-                        { $project: { username:1,email:1,phone:1,role:1,client:1,profilePicture:1 } }
-                    ],
-                    as: 'createdByDetails' } },
-                { $unwind: '$createdByDetails' },
-                { $lookup: { from: 'users', localField: '_id', foreignField: 'client',
-                    pipeline:[
-                        { $project: { username:1,email:1,phone:1,role:1,client:1,profilePicture:1 } }
-                    ], as: 'users' } },
-
-            ]); 
-            const count = await Client.countDocuments({
-                is_deleted: false,
-                ...searchQuery
-            },);
+            const clients = await Client.findAll(
+                {
+                    where: {
+                        ...searchQuery
+                    },
+                    limit: limit,
+                    offset: skip,
+                    order: [['companyName', 'asc']],
+                    include: [
+                        {
+                            model: User,
+                            as: 'users',
+                            attributes: ['username', 'email', 'phone', 'role', 'client', 'profilePicture']
+                        }
+                    ]
+                }
+            ); 
+            const count = await Client.count({
+                where: {
+                    ...searchQuery
+                }
+            });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: clients,
@@ -206,7 +220,13 @@ module.exports={
         console.log('Get Client By ID API.....');
         try {
             const { id } = req.params;
-            const client = await Client.findOne({ _id: id, is_deleted: false });
+            const client = await Client.findOne({ where: { id: id },include: [
+                        {
+                            model: User,
+                            as: 'users',
+                            attributes: ['username', 'email', 'phone', 'role', 'client', 'profilePicture']
+                        }
+                    ] });
             if (!client) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
@@ -230,6 +250,38 @@ module.exports={
             });
         }
     },
-
+    /*
+    * @route POST /api/v1/mysdom/client/add
+    * @desc Get new client
+    * @authentication  true [admin]
+    */
+   getAllClients:async (req,res)=>{
+        console.log('Get All Clients API.....');
+        try {
+            const clients = await Client.findAll(
+                {
+                    where: {
+                        isActive: true
+                    },
+                    order: [['companyName', 'asc']],
+                    raw: true
+                }
+            ); 
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: clients,
+                message: 'Clients fetched successfully'
+            });
+        }
+        catch (error) {
+            console.error('Error in Get All Clients:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    }
 
 }

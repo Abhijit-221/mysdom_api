@@ -54,6 +54,7 @@ const updateClientValidation = [
 // Route to add a new client
 router.post('/add', auth, authorize('admin', 'superadmin'), addClientValidation, clientController.addClient);
 router.get('/get', auth, authorize('admin', 'superadmin',), clientController.getClients);
+router.get('/get-all', auth, authorize('admin', 'superadmin',), clientController.getAllClients);
 router.get('/get/:id', auth, authorize('admin', 'superadmin'), clientController.getClientById);
 router.put('/update', auth, authorize('admin', 'superadmin'), updateClientValidation, clientController.updateClient);
 // router.delete('/delete/:id', auth, authorize('admin','superadmin'), clientController.deleteClient);
