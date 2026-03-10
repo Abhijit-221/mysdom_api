@@ -45,7 +45,7 @@ const addUserValidation = [
   body('role').trim().notEmpty().isIn(['user', 'admin', 'moderator']).withMessage('Invalid role'),
   body('client').optional({ checkFalsy: true })
   .trim()
-  .isMongoId()
+  .isString()
   .withMessage('Invalid client ID'),
 ];
 const updateUserValidation = [
@@ -63,9 +63,8 @@ body('username')
 body('phone')
   .optional({ checkFalsy: true })
   .trim()
-  .isEmail()
-  .normalizeEmail()
-  .withMessage('Invalid email'),
+  .isMobilePhone()
+  .withMessage('Invalid phone number'),
 
 body('gender')
   .optional({ checkFalsy: true })

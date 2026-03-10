@@ -1,23 +1,24 @@
 // middleware/auth.js
 const jwt = require('jsonwebtoken');
-const User = require('../models/UserSchema');
 const { ResponseCodes } = require('../utils/constant');
-
+const User = require("../models/UserSchema");
 const auth = async (req, res, next) => {
   try {
     // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(ResponseCodes.UNAUTHORIZED).json({ message: 'No authentication token, access denied' });
     }
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Find user
-    const user = await User.findById(decoded.id,{is_deleted:false}).select('-password');
-    
+    const user = await User.findOne({
+      where: { id: decoded.id },
+      raw: true
+    });
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });
     }

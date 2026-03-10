@@ -1,9 +1,11 @@
 const { validationResult } = require("express-validator");
-const UserSchema = require("../models/UserSchema");
 const { ResponseCodes } = require("../utils/constant");
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const Client = require("../models/ClientSchema");
+const User = require("../models/UserSchema");
+const bcrypt = require('bcryptjs');
+const { Op } = require("sequelize");
 
 module.exports = {
     /*
@@ -24,7 +26,10 @@ module.exports = {
             }
             const { username, email, password } = req.body;
             // Validate input
-            let checkEmail = await UserSchema.findOne({ email,is_deleted: false });
+            let checkEmail = await User.findOne({ 
+                where: { email },
+                raw: true
+             });
             if (checkEmail) {
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
@@ -33,8 +38,9 @@ module.exports = {
                     message: 'Email already exists'
                 });
             }
+            let hashpassword = await bcrypt.hash(password, 12);
             //let create new user
-            let newUser = await UserSchema.create({ username, email, password,role: 'superadmin' });
+            let newUser = await User.create({ username, email, password: hashpassword,role: 'superadmin' });
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
                 data: newUser,
@@ -71,30 +77,34 @@ module.exports = {
             }
             const { email, password } = req.body;
             //let check user exist or not
-            let user = await UserSchema.findOne({ email,is_deleted: false });
+            let user = await User.findOne({
+                where: { email },
+                raw: true
+            });
+            console.log(user)
             if (!user) {
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
                     data: {},
-                    error: 'Invalid email or password',
-                    message: 'Invalid email or password'
+                    error: 'Invalid email',
+                    message: 'Invalid email'
                 });
             }
                 // Check password
-            const isMatch = await user.comparePassword(password);
+            const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
                     data: {},
-                    error: 'Invalid email or password',
-                    message: 'Invalid email or password'
+                    error: 'Invalid password',
+                    message: 'Invalid password'
                 });
             }
                 // Generate JWT token
-            const token = await jwt.sign({ id: user._id,role:user.role,email:user.email }, process.env.JWT_SECRET, { expiresIn: '1D' });
+            const token = await jwt.sign({ id: user.id,role:user.role,email:user.email }, process.env.JWT_SECRET, { expiresIn: '1D' });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
-                data: { token,_id: user._id,role:user.role,email:user.email,username:user.username },
+                data: { token,id: user.id,role:user.role,email:user.email,username:user.username },
                 error: null,
                 message: 'Login successful'
             });
@@ -127,7 +137,10 @@ module.exports = {
             }
             const { username,email, password,role,client } = req.body;
             //let check user exist or not
-            let user = await UserSchema.findOne({ email,is_deleted: false });
+            let user = await User.findOne({
+                where: { email },
+                raw: true
+            });
             if (user) {
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
@@ -137,8 +150,19 @@ module.exports = {
                 });
             }
             //let check client exist or not
+            if(role==='user' && !client){
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: 'Client ID is required for user role',
+                    message: 'Client ID is required for user role'
+                });
+            }
             if(client){
-                let checkClient = await Client.findOne({ _id:client,is_deleted: false });
+                let checkClient = await Client.findOne({ 
+                    where: { id:client },
+                    raw: true
+                 });
                 if (!checkClient) {
                     return res.status(ResponseCodes.BAD_REQUEST).json({
                         status: ResponseCodes.BAD_REQUEST,
@@ -149,7 +173,8 @@ module.exports = {
                 }
             }
             //let create new user
-            let newUser = await UserSchema.create({username, email, password,role,...client && {client} });
+            let hashpassword = await bcrypt.hash(password, 12);
+            let newUser = await User.create({username, email, password: hashpassword,role,...client && {client} });
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
                 data: newUser,
@@ -184,14 +209,14 @@ module.exports = {
                     await fs.unlinkSync(uploadedFilePath.path);
                 }
             return res.status(ResponseCodes.BAD_REQUEST).json({ 
-                success: ResponseCodes.BAD_REQUEST,
+                status: ResponseCodes.BAD_REQUEST,
                 errors: validationError.array(),
                 message: 'Validation failed' 
             });
             }
             const { id,username,phone,gender,isActive } = req.body;
             //let check user exist or not
-            let user = await UserSchema.findOne({ _id:id,is_deleted: false });
+            let user = await User.findOne({ where: { id:id},raw: true });
             if (!user) {
                 if(uploadedFilePath){
                     // Delete the uploaded file if validation fails
@@ -219,7 +244,9 @@ module.exports = {
             }
             //check if phone no already exists for other user
             if(phone){
-                let checkPhone = await UserSchema.findOne({ phone, _id: { $ne: id },is_deleted: false });
+                let checkPhone = await User.findOne({
+                     where: { phone, id: { [Op.ne]: id } }
+                    });
                 if (checkPhone) {
                     if(uploadedFilePath){
                         // Delete the uploaded file if validation fails
@@ -245,7 +272,9 @@ module.exports = {
             isActive: ['superadmin','admin'].includes(req.user.role) ? isActive : user.isActive
             };
             //let update user
-            let updatedUser = await UserSchema.findByIdAndUpdate(id, updateData, { new: true });
+             await User.update(updateData, { where: { id } });
+             let updatedUser = await User.findOne({ where: { id },raw: true });
+
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: updatedUser,
@@ -284,19 +313,20 @@ module.exports = {
             let searchquery = {};
             if(search){
                 searchquery = {
-                     $or: [
-                        { username: { $regex: search, $options: 'i' } },
-                        { email: { $regex: search, $options: 'i' } },
+                     [Op.or]: [
+                        { username: { [Op.like]: `%${search}%` } },
+                        { email: { [Op.like]: `%${search}%` } },
+                        { role: { [Op.like]: `%${search}%` } }
                         // { role: { $regex: search, $options: 'i' } }
                     ]
                 }
             }
             if(['admin','superadmin'].includes(req.user.role)){
-                users = await UserSchema.find({is_deleted: false,...searchquery }).select('-password').skip(skip).limit(limit);
-                count = await UserSchema.countDocuments({is_deleted: false,...searchquery });
+                users = await User.findAll({where: {...searchquery },raw: true});
+                count = await User.count({where: {...searchquery }});
             }else{
-                users = await UserSchema.find({client:req.user.client,is_deleted: false,...searchquery }).select('-password').skip(skip).limit(limit);
-                count = await UserSchema.countDocuments({client:req.user.client,is_deleted: false,...searchquery });
+                users = await User.findAll({where: {client:req.user.client,...searchquery },raw: true});
+                count = await User.count({where: {client:req.user.client,...searchquery }});
             }
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
@@ -336,9 +366,11 @@ module.exports = {
                 })
             }
             //let get user
-            let user = await UserSchema.findOne({
-                _id:user_id,
-                is_deleted:false
+            let user = await User.findOne({
+                where: {
+                    id:user_id,
+                },
+                raw: true
             });
             if(!user){
                 return res.status(ResponseCodes.NOT_FOUND).json({

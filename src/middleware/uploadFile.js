@@ -14,9 +14,13 @@ const storage = multer.diskStorage({
     // console.log('Determining upload destination for file:', file);
     // You can set different destinations based on file type
     let uploadPath = uploadDir;
-    
+    console.log(file);
+    function getFieldName(fieldname) {
+      const match = fieldname.match(/\[([^\]]+)\]$/);
+      return match ? match[1] : fieldname;
+    }
     if (file.mimetype.startsWith('image/')) {
-      uploadPath = path.join(uploadDir, `${file.fieldname}s`); // e.g., static/images
+      uploadPath = path.join(uploadDir, `${getFieldName(file.fieldname)}s`); // e.g., static/images
     } else if (file.mimetype.startsWith('video/')) {
       uploadPath = path.join(uploadDir, 'videos');
     } else if (file.mimetype === 'application/pdf') {

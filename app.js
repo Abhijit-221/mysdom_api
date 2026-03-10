@@ -3,7 +3,9 @@ const app = express()
 const cors = require('cors');
 require('dotenv').config();
 const helmet = require('helmet');
-const dbConfig = require('./src/config/db.config');
+// const dbConfig = require('./src/config/db.config');
+const { connection } = require('./src/config/db2.config');
+connection();
 const path =  require('path');
 
 app.use(express.json());
@@ -12,11 +14,11 @@ app.use(cors(
         {
         "origin": "*",
         "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
-        "preflightContinue": false,
-        "optionsSuccessStatus": 204
+        // "preflightContinue": false,
+        // "optionsSuccessStatus": 204
         }
 ));
-app.use(helmet());
+// app.use(helmet());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 // app.get('/', (req, res) => {
 //   res.send('Hello World!')
@@ -34,6 +36,13 @@ app.use('/api/v1/mysdom/client', clientRoutes);
 app.use('/api/v1/mysdom/service', serviceRoutes);
 app.use('/api/v1/mysdom/client-service',clientServiceRoutes);
 app.use('/api/v1/mysdom/bgvrequest', bgvRequestRoutes);
+
+app.use((err, req, res, next) => {
+  console.error(err);
+// console.log(req.body.services[0].form_data);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
