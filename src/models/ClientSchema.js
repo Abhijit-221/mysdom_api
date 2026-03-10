@@ -58,6 +58,10 @@ const Client = sequelize.define('client', {
         primaryKey: true,
         allowNull: false
     },
+    clientCode:{
+        type: DataTypes.STRING,
+        allowNull: false
+    },
     companyName: {
         type: DataTypes.STRING,
         allowNull: false

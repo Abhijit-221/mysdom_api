@@ -16,9 +16,10 @@ const sequelize = new Sequelize(
 const connection = async () => {
   try {
     await sequelize.authenticate();
-    // await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+    // await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     await sequelize.sync({ force: false });
-    // await Admin.sync({ force: true });
+    // await BGVRequest.sync({ force: true });
+    
     console.log("Connection has been established successfully.");
   } catch (error) {
     console.error("Unable to connect to the database:", error);

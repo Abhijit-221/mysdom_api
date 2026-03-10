@@ -14,11 +14,11 @@ app.use(cors(
         {
         "origin": "*",
         "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
-        "preflightContinue": false,
-        "optionsSuccessStatus": 204
+        // "preflightContinue": false,
+        // "optionsSuccessStatus": 204
         }
 ));
-app.use(helmet());
+// app.use(helmet());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 // app.get('/', (req, res) => {
 //   res.send('Hello World!')
@@ -38,7 +38,8 @@ app.use('/api/v1/mysdom/client-service',clientServiceRoutes);
 app.use('/api/v1/mysdom/bgvrequest', bgvRequestRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error(err);
+// console.log(req.body.services[0].form_data);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 

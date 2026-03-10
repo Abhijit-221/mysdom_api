@@ -1,8 +1,14 @@
 const { validationResult } = require("express-validator");
 const { ResponseCodes } = require("../utils/constant");
-const ClientSchema = require("../models/ClientSchema");
-const BGVRequestSchema = require("../models/BGVRequestSchema");
-const UserSchema = require("../models/UserSchema");
+const Client = require("../models/ClientSchema");
+const BGVRequest = require("../models/BGVRequestSchema");
+const User = require("../models/UserSchema");
+const Service = require("../models/ServiceSchema");
+const BGVRequestService = require("../models/BGVRequestServiceSchema");
+const BGVRequestForm = require("../models/BGVRequestFormSchema");
+const fs = require('fs');
+const { Op, where } = require("sequelize");
+const ClientService = require("../models/ClienServiceSchema");
 module.exports = {
     /*
     * @route POST /api/v1/mysdom/BGVRequest/create
@@ -21,14 +27,39 @@ module.exports = {
                     message: 'Validation failed'
                 });
             }
+            req.files.forEach(file => {
+
+                const match = file.fieldname.match(
+                    /services\[(\d+)\]\[form_data\]\[(.+)\]/
+                );
+
+                if (!match) return;
+
+                const serviceIndex = match[1];
+                const fieldKey = match[2];
+
+                req.body.services[serviceIndex]
+                    .form_data[fieldKey] = file.path;
+
+            });
             let { candidate,
-                status,
+                client_id,
+                services,
                 priority,
                 assignedTo,
                 slaDueDate } = req.body;
             //let check client exist or not
-            let client = await ClientSchema.findOne({ _id: req.user.client, is_deleted: false });
+            // console.log('req.body:-->',req.body);
+            // console.log(req.body.services[0].form_data);
+            let client = await Client.findOne({
+                where: { id: client_id, isActive: true }, raw: true
+            });
             if (!client) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
@@ -37,8 +68,13 @@ module.exports = {
                 });
             }
             //let check assigned to user exist or not
-            let assignedToUser = await UserSchema.findOne({ _id: assignedTo, role: 'admin', is_deleted: false });
+            let assignedToUser = await User.findOne({ where: { id: assignedTo, role: 'admin' }, raw: true });
             if (!assignedToUser) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
@@ -47,34 +83,85 @@ module.exports = {
                 });
             }
             //check BGV request exist or not
-            let bgvRequest = await BGVRequestSchema.findOne({
-                $or: [
-                    { "candidate.email": candidate.email },
-                    { "candidate.phone": candidate.phone }
-                ],
-                clientId: req.user.client,
-                is_deleted: false
+            let checkBGVRequest = await BGVRequest.findOne({
+                where: {
+                    [Op.or]: [
+                        { candidate_email: candidate.email },
+                        { candidate_phone: candidate.phone }
+                    ],
+                    status: { [Op.notIn]: ['REJECTED', 'COMPLETED'] },
+                    clientId: client_id,
+                },
+                raw: true
             });
-            console.log('BGV request exist or not:', bgvRequest);
-            if (bgvRequest) {
+            if (checkBGVRequest) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
                 return res.status(ResponseCodes.CONFLICT).json({
                     status: ResponseCodes.CONFLICT,
                     data: {},
-                    error: 'BGV request already exists',
-                    message: 'BGV request already exists'
+                    error: 'BGV request already exist with same candidate email or phone',
+                    message: 'BGV request already exist with same candidate email or phone'
                 });
             }
-            //create BGV request
-            let newBGVRequest = new BGVRequestSchema({
-                clientId: req.user.client,
-                candidate,
-                status,
-                priority,
-                submittedBy: req.user._id,
+            //let check services exist or not
+            let notFoundServices = [];
+            for (let service of services) {
+                let serviceExist = await Service.findOne({ where: { id: service.serviceId, isActive: true }, raw: true });
+                if (!serviceExist) {
+                    notFoundServices.push(service.serviceId);
+                }
+            }
+            if (notFoundServices.length > 0) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: `Services not found with ids: ${notFoundServices.join(', ')}`,
+                    message: `Services not found with ids: ${notFoundServices.join(', ')}`
+                });
+            }
+            //let create BGV request
+            let newBGVRequest = await BGVRequest.create({
+                clientId: client_id,
+                candidate_name: candidate.name,
+                candidate_email: candidate.email,
+                candidate_phone: candidate.phone,
+                ...priority && { priority },
                 assignedTo,
-                slaDueDate
+                ...slaDueDate && { slaDueDate },
+                submittedBy: req.user.id
             });
-            await newBGVRequest.save();
+
+            //let add services to BGV request
+            for (let service of services) {
+                let requestService = await BGVRequestService.create({
+                    requestId: newBGVRequest.id,
+                    serviceId: service.serviceId,
+                    createdBy: req.user.id,
+                    updatedBy: req.user.id
+                });
+                let insertFormDatas = [];
+                for (let form in service.form_data) {
+                    insertFormDatas.push({
+                        req_service_id: requestService.id,
+                        field_name: form,
+                        field_value: service.form_data[form]
+                    })
+                }
+                console.log("insertFormDatas:", insertFormDatas);
+                let createRequestForm = await BGVRequestForm.bulkCreate(insertFormDatas);
+
+            }
+            //create BGV request
+
             return res.status(ResponseCodes.CREATED).json({
                 status: ResponseCodes.CREATED,
                 data: newBGVRequest,
@@ -85,6 +172,11 @@ module.exports = {
         }
         catch (error) {
             console.error('Error in Add Client:', error);
+            if (req.files) {
+                req.files.forEach(file => {
+                    fs.unlink(file.path, () => { });
+                });
+            }
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
                 status: ResponseCodes.INTERNAL_SERVER_ERROR,
                 data: {},
@@ -213,141 +305,101 @@ module.exports = {
             });
         }
     },
-    /*
-    * @route POST /api/v1/mysdom/BGVRequest/services/add
-    * @desc services add for the BGV request by user
-    * @authentication  true [user]
-    */
-    addBGVRequestServices: async (req, res) => {
-        console.log('BGV request services add API...');
-        try {
-            const validationErrors = validationResult(req);
-            if (!validationErrors.isEmpty()) {
-                return res.status(ResponseCodes.BAD_REQUEST).json({
-                    status: ResponseCodes.BAD_REQUEST,
-                    data: {},
-                    errors: validationErrors.array(),
-                    message: 'Validation failed'
-                });
-            }
-            let { requestId, serviceId } = req.body;
-            let bgvRequest = await BGVRequestSchema.findOne({
-                _id: requestId,
-                submittedBy: req.user._id,
-                clientId: req.user.client,
-                is_deleted: false
-            });
-            if (!bgvRequest) {
-                return res.status(ResponseCodes.NOT_FOUND).json({
-                    status: ResponseCodes.NOT_FOUND,
-                    data: {},
-                    error: 'BGV request not found',
-                    message: 'BGV request not found'
-                });
-            }
-            //check service exist or not\
-            let service = await ServiceSchema.findOne({
-                _id: serviceId,
-                is_deleted: false
-            });
-            if (!service) {
-                return res.status(ResponseCodes.NOT_FOUND).json({
-                    status: ResponseCodes.NOT_FOUND,
-                    data: {},
-                    error: 'Service not found',
-                    message: 'Service not found'
-                });
-            }
-            //check service already added or not
-            let requestService = await RequestServiceSchema.findOne({
-                requestId,
-                serviceId,
-                is_deleted: false
-            });
-            if (requestService) {
-                return res.status(ResponseCodes.CONFLICT).json({
-                    status: ResponseCodes.CONFLICT,
-                    data: {},
-                    error: 'Service already added to this BGV request',
-                    message: 'Service already added to this BGV request'
-                });
-            }
-            //add service to BGV request
-            let newRequestService = new RequestServiceSchema({
-                requestId,
-                serviceId
-            });
-            await newRequestService.save();
-            return res.status(ResponseCodes.CREATED).json({
-                status: ResponseCodes.CREATED,
-                data: newRequestService,
-                error: null,
-                message: 'Service added to BGV request successfully'
-            });
-        }
-        catch (error) {
-            console.error('Error in Add Service to BGV Request:', error);
-            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
-                status: ResponseCodes.INTERNAL_SERVER_ERROR,
-                data: {},
-                error: error.message,       
-                message: 'Server error'
-            });
-        }   
-    },
+
     /*
     * @route GET /api/v1/mysdom/BGVRequest/services/get
-    * @desc services add for the BGV request by user
+    * @desc services get BGV request 
     * @authentication  true [admin,user,superadmin]
     */
-    getBGVRequestServices: async (req, res) => {
+    getBGVRequest: async (req, res) => {
         console.log('BGV request services get API...');
         try {
-            let { page,limit,search } = req.query;
+            let { page, limit, search, status } = req.query;
             page = parseInt(page) || 1;
             limit = parseInt(limit) || 10;
             let skip = (page - 1) * limit;
-            
+            console.log(limit, skip)
 
-            if(!['superadmin','admin'].includes(req.user.role)){
-                
-            }
-            let bgvrequests = await BGVRequestSchema.aggregate([
-                {$match:{
-                    clientId: req.user.client,
-                    is_deleted: false,
-                    ...search && {
-                        $or:[
-                            { "candidate.name": { $regex: search, $options: 'i' } },
-                            { "candidate.email": { $regex: search, $options: 'i' } },
-                            { "candidate.phone": { $regex: search, $options: 'i' } },
-                        ]
+            let whereClause = {};
+            if (req.user.role === 'user') {
+                let user = await User.findOne({
+                    where: {
+                        id: req.user.id
                     }
-                }},
-                {$lookup:{
-                    from: 'requestservices',
-                    localField: '_id',
-                    foreignField: 'requestId',
-                    as: 'services'
-                }},
-                {$unwind:{ 
-                    path: '$services',
-                    preserveNullAndEmptyArrays: true
-                }},
-                {$project:{
-                    services: 1,
-                    candidate: 1,
-                    status: 1,
-                    createdAt: 1
-                }}
-            ])
+                });
+                whereClause.where = {
+                    clientId: user.client
+                }
+            }
+            if (search) {
+                whereClause.where = {
+                    ...whereClause.where,
+                    [Op.or]: [
+                        { candidate_name: { [Op.like]: `%${search}%` } },
+                        { candidate_email: { [Op.like]: `%${search}%` } },
+                        { candidate_phone: { [Op.like]: `%${search}%` } },
+                    ]
+
+                }
+            }
+            let statusCondition = {};
+            if (status) {
+                statusCondition = {
+                    where: {
+                        status: status
+                    }
+                }
+            }
+            let bgvRequests = await BGVRequest.findAll({
+                ...whereClause,
+                include: [
+                    {
+                        model: Client,
+                        as: 'client'
+                    },
+                    {
+                        model: BGVRequestService,
+                        as: 'bgvReqestService',
+                        ...statusCondition,
+                        required: true,
+                        // include: [{
+                        //     model: BGVRequestForm,
+                        //     as: 'bgvRequestForm',
+                        //     required: true
+                        // }]
+                    }
+                ],
+                order: [['createdAt', 'desc']],
+                limit: limit,
+                offset: skip
+            });
+            let bgvRequestCount = await BGVRequest.count({
+                ...whereClause,
+                include: [
+                    {
+                        model: Client,
+                        as: 'client'
+                    },
+                    {
+                        model: BGVRequestService,
+                        as: 'bgvReqestService',
+                        ...statusCondition,
+                        required: true,
+                        // include:[{
+                        //     model:BGVRequestForm,
+                        //     as:'bgvRequestForm',
+                        //     required:true
+                        // }]
+                    }
+                ],
+                order: [['createdAt', 'desc']],
+            });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
-                data: bgvrequests,
-                error: null,
+                data: { bgvRequests, count: bgvRequestCount },
+                error: {},
                 message: 'BGV request services fetched successfully'
             });
-
         }
         catch (error) {
             console.error('Error in Get Services of BGV Request:', error);
@@ -360,6 +412,242 @@ module.exports = {
         }
     },
 
+    /*
+    * @route POST /api/v1/mysdom/BGVRequest/services/get
+    * @desc services get BGV request 
+    * @authentication  true [admin,user,superadmin]
+    */
+    updateRequestStatus: async (req, res) => {
+        console.log('update bgv request status api...');
+        try {
+            const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let { request_id, service_id, remark, status } = req.body;
+            //let check request
+            let bgvRequest = await BGVRequestService.findOne({
+                where: {
+                    requestId: request_id,
+                    serviceId: service_id
+                },
+                raw: true
+            });
+            if (!bgvRequest) {
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: "BGV request service not found",
+                    error: "BGV request service not found"
+                })
+            }
+            const updateData = {
+                status: status,
+                updatedBy: req.user.id
+            };
 
+            if (remark) {
+                updateData.remark = remark;
+            }
+            let updateBGV = await BGVRequestService.update(updateData, {
+                where: {
+                    requestId: request_id,
+                    serviceId: service_id
+                }
+            });
+            let getReqServices = await BGVRequestService.findAll({
+                where: {
+                    requestId: request_id
+                },
+                raw: true
+            });
+            let finalStatus = "IN_PROGRESS";
+
+            if (getReqServices.length > 0) {
+                const statuses = getReqServices.map(s => s.status);
+
+                const allRejected = statuses.every(s => s === "REJECTED");
+                const allCompleted = statuses.every(s => s === "COMPLETED");
+                const allHold = statuses.every(s => s === "ON_HOLD");
+
+                if (allRejected) {
+                    finalStatus = "REJECTED";
+                } else if (allCompleted) {
+                    finalStatus = "COMPLETED";
+                } else if (allHold) {
+                    finalStatus = "ON_HOLD";
+                }
+            }
+            await BGVRequest.update(
+                { status: finalStatus },
+                {
+                    where: { id: request_id }
+                }
+            );
+            let getUpdatedBgv = await BGVRequestService.findOne({
+                where: {
+                    requestId: request_id,
+                    serviceId: service_id
+                },
+                raw: true
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: getUpdatedBgv,
+                error: {},
+                message: 'BGV reauest updated succesfully'
+            });
+        }
+        catch (error) {
+            console.log('Error in Get Services of BGV Request:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    },
+
+
+    /*
+    * @route POST /api/v1/mysdom/BGVRequest/services/create
+    * @desc services get BGV request 
+    * @authentication  true [admin,user,superadmin]
+    */
+    bgvReqCreate: async (req, res) => {
+        console.log("BGV req create api...");
+        try {
+            const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let inputData = req.body;
+            let user = req.user.client;
+            console.log('user:', user);
+            let client = await Client.findOne({
+                where: { id: inputData.clientId, isActive: true }, raw: true
+            });
+            if (!client) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: 'Client not found',
+                    message: 'Client not found'
+                });
+            }
+            let checkBGVRequest = await BGVRequest.findOne({
+                where: {
+                    [Op.or]: [
+                        { candidate_email: inputData.candidate_email },
+                        { candidate_phone: inputData.candidate_phone }
+                    ],
+                    status: { [Op.notIn]: ['REJECTED', 'COMPLETED'] },
+                    clientId: client.id,
+                },
+                raw: true
+            });
+            if (checkBGVRequest) {
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.CONFLICT).json({
+                    status: ResponseCodes.CONFLICT,
+                    data: {},
+                    error: 'BGV request already exist with same candidate email or phone',
+                    message: 'BGV request already exist with same candidate email or phone'
+                });
+            }
+
+            console.log(inputData.service[0]);
+            //let get service with ths client exist 
+            let serviceError=[]
+            for (const serviceid of inputData.service){
+
+                let clientService = await ClientService.findOne({
+                    where:{
+                        clientId:client.id,
+                        serviceId:serviceid
+                    },
+                });
+                if(!clientService){
+                    serviceError.push(serviceid);
+                }
+            };
+            if(serviceError.length){
+                if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    
+                    status:ResponseCodes.NOT_FOUND,
+                    data:[],
+                    error:`Client with these services not found,${serviceError}`,
+                    message:`Client with these services not found`,
+
+                })
+            }
+            inputData.submittedBy=req.user.id;
+            if(req.files){
+                console.log(req.files);
+                inputData.id_doc=req.files.id_doc?req.files.id_doc[0].path:null;
+                inputData.job_doc = req.files.job_doc?req.files.job_doc[0].path:null;
+                inputData.edu_doc = req.files.edu_doc?req.files.edu_doc[0].path:null;
+
+            }
+            console.log(inputData);
+            let createBgvRequest = await BGVRequest.create(inputData);
+            let reqService = inputData.service.map((serviceid)=>{
+                return {
+                    requestId:createBgvRequest.id,
+                    serviceId:serviceid,
+                    createdBy:req.user.id,
+                    updatedBy:req.user.id
+                }
+            })
+            let createServices  = await BGVRequestService.bulkCreate(reqService);
+
+            return res.status(ResponseCodes.CREATED).json({
+                status:ResponseCodes.CREATED,
+                data:createBgvRequest,
+                error:{},
+                message:"Request created successfully."
+            })
+
+        }
+        catch (error) {
+            console.log('Error in Get Services of BGV Request:', error);
+             if (req.files) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    }
 
 }

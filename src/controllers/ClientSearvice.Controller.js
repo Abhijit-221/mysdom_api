@@ -302,6 +302,66 @@ module.exports = {
                 message: 'Server error'
             });
         }
-    }
+    },
+    /*
+    * @route POST /api/v1/mysdom/client/add
+    * @desc Get service with client
+    * @authentication  true [admin]
+    */
+   getClientServiceByClient: async(req,res)=>{
+        console.log('Get client service with client id api...');
+        try{
+            let {client_id} = req.params;
+            console.log(client_id);
+            //let check client exist or not
+            let client = await Client.findOne({
+                where:{
+                    id:client_id,
+                    isActive:true,
+                },
+                raw:true
+            });
+            if(!client){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:"Client not found",
+                    message:"Client not found"
+                })
+            }
+
+            let clientService = await ClientService.findAll({
+                where:{
+                    clientId:client_id
+                },
+                include:[
+                    {
+                        model:Client,
+                        as:"client"
+                    },
+                    {
+                        model:Service,
+                        as:"service"
+                    }
+                ]
+                
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:clientService,
+                error:{},
+                message:"Client Service fetched"
+            })
+        }
+        catch(error){
+            console.error('Error in update Client Service List:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+   }
 
 }
