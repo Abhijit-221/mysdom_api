@@ -397,5 +397,29 @@ module.exports = {
                 message: 'Server error'
                 });
         }
+    },
+    
+    getUsers:async(req,res)=>{
+        try{
+            let users = await User.findAll({
+                where:{isActive:true},
+                raw:true
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:users,
+                error:{},
+                message:"User fetched."
+            })
+        }
+        catch(error){
+             console.error('Error in getAllUsers controller:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+                });
+        }
     }
 }

@@ -20,7 +20,7 @@ const updateServiceValidation = [
 // Route to add a new service
 router.post('/add', auth, authorize('admin', 'superadmin'), addServiceValidation, ServiceController.addService);
 router.get('/list', auth, authorize('admin', 'user', 'superadmin'), ServiceController.getServiceList);
-router.get('/:id', auth, authorize('admin', 'user', 'superadmin'), ServiceController.getServiceById);
+router.get('/getby/:id', auth, authorize('admin', 'user', 'superadmin'), ServiceController.getServiceById);
 router.put('/update', auth, authorize('admin', 'superadmin'),updateServiceValidation, ServiceController.updateService);
 router.get('/get', auth, authorize('admin', 'superadmin','user'),updateServiceValidation, ServiceController.getServices);
 

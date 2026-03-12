@@ -242,7 +242,6 @@ module.exports = {
             //let find the services
             let services = await Service.findAll({
                 where: {
-                    is_deleted: false,
                     isActive: true
                 }
             });

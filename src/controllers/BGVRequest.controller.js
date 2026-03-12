@@ -539,7 +539,7 @@ module.exports = {
                 where: { id: inputData.clientId, isActive: true }, raw: true
             });
             if (!client) {
-                if (req.files) {
+                if (req.files && req.files.length) {
                     req.files.forEach(file => {
                         fs.unlink(file.path, () => { });
                     });
@@ -563,7 +563,7 @@ module.exports = {
                 raw: true
             });
             if (checkBGVRequest) {
-                if (req.files) {
+                if (req.files && req.files.length) {
                     req.files.forEach(file => {
                         fs.unlink(file.path, () => { });
                     });
@@ -592,7 +592,7 @@ module.exports = {
                 }
             };
             if(serviceError.length){
-                if (req.files) {
+                if (req.files && req.files.length) {
                     req.files.forEach(file => {
                         fs.unlink(file.path, () => { });
                     });
@@ -636,7 +636,7 @@ module.exports = {
         }
         catch (error) {
             console.log('Error in Get Services of BGV Request:', error);
-             if (req.files) {
+             if (req.files && req.files.length) {
                     req.files.forEach(file => {
                         fs.unlink(file.path, () => { });
                     });

@@ -1,18 +1,17 @@
 const { Sequelize } = require("sequelize");
 
-// console.log('dbConfig:',dbConfig);
-// const sequelize = new Sequelize(
-//   process.env.DATABASE,
-//   process.env.USER_NAME,
-//   process.env.DB_PASSWORD,
-//   {
-//     host: process.env.HOST,
-//     dialect: process.env.DIALECT,
-//     // dialectModule: require("mysql2"), // Add this line
-//     logging: false,
-//   }
-// );
-const sequelize = new Sequelize('mysql://avnadmin:AVNS_9If4yV9DFE67N5_ogNM@mysql-80c0d57-swain-96d5.l.aivencloud.com:12504/defaultdb?ssl-mode=REQUIRED');
+const sequelize = new Sequelize(
+  process.env.DATABASE,
+  process.env.USER_NAME,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.HOST,
+    dialect: process.env.DIALECT,
+    // dialectModule: require("mysql2"), // Add this line
+    logging: false,
+  }
+);
+// const sequelize = new Sequelize('mysql://avnadmin:AVNS_9If4yV9DFE67N5_ogNM@mysql-80c0d57-swain-96d5.l.aivencloud.com:12504/defaultdb?ssl-mode=REQUIRED');
 const connection = async () => {
   try {
     await sequelize.authenticate();
