@@ -102,6 +102,7 @@ module.exports = {
                 },
                 raw: true
             });
+
             if (checkBGVRequest) {
                 if (req.files) {
                     req.files.forEach(file => {
@@ -135,6 +136,19 @@ module.exports = {
                     error: `Services not found with ids: ${notFoundServices.join(', ')}`,
                     message: `Services not found with ids: ${notFoundServices.join(', ')}`
                 });
+            }
+            let getLastBgvRequest = await BGVRequest.findOne({
+                where:{},
+                order:[['createdAt','desc']],
+            });
+            if(getLastBgvRequest && getLastBgvRequest.request_id){
+                if(getLastBgvRequest.request_id){
+                    let newDigit = parseInt(getLastBgvRequest.request_id.split('-')[3])+1
+                    inputData.request_id = `MYS-TRL-BBS-${newDigit}`
+                }
+            }
+            else{
+                inputData.request_id="MYS-TRL-BBS-1"
             }
             //let create BGV request
             let newBGVRequest = await BGVRequest.create({
@@ -911,19 +925,21 @@ module.exports = {
             let createTransaction = await sequelize.transaction(async (t) => {
 
                 let createBgvRequest = await BGVRequest.create(inputData, { transaction: t });
-                let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
-                    const cleanedData = Object.fromEntries(
-                        Object.entries(employeeDetail).map(([key, value]) => [
-                            key,
-                            value === "" ? null : value
-                        ])
-                    );
-                    return {
-                        ...cleanedData,
-                        bgvRequestId: createBgvRequest.id
-                    }
-                });
-                let createEmployeeDetails = await BGVEmployment.bulkCreate(employeeDetailsData, { transaction: t });
+                if(inputData.bgvEmployments && inputData.bgvEmployments.length){
+                    let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
+                        const cleanedData = Object.fromEntries(
+                            Object.entries(employeeDetail).map(([key, value]) => [
+                                key,
+                                value === "" ? null : value
+                            ])
+                        );
+                        return {
+                            ...cleanedData,
+                            bgvRequestId: createBgvRequest.id
+                        }
+                    });
+                    let createEmployeeDetails = await BGVEmployment.bulkCreate(employeeDetailsData, { transaction: t });
+                }
                 let reqService = inputData.service.map((serviceid) => {
                     return {
                         requestId: createBgvRequest.id,

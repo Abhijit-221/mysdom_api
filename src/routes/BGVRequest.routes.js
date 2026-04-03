@@ -196,32 +196,7 @@ const createBgvRequestValidator = [
     .isDate()
     .withMessage("Invalid date format"),
 
-  /* EMPLOYMENT */
-
-  // body("company_name")
-  //   .optional()
-  //   .isString(),
-
-  // body("employee_id")
-  //   .optional()
-  //   .isString(),
-
-  // body("employment_start")
-  //   .optional()
-  //   .isDate(),
-
-  // body("employment_end")
-  //   .optional()
-  //   .isDate(),
-
-  // body("job_title")
-  //   .optional()
-  //   .isString(),
-
-  // body("leaving_reason")
-  //   .optional()
-  //   .isString(),
-
+  
   /* EDUCATION */
 
   body("institute_name")
