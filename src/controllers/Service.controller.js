@@ -21,7 +21,7 @@ module.exports = {
                     message: 'Validation failed'
                 });
             }
-            const { name, description } = req.body;
+            const { name, description, moredetails } = req.body;
             //let check if service with same name already exists
             const existingService = await Service.findOne({
                 where: {
@@ -40,6 +40,7 @@ module.exports = {
             const newService = {
                 name,
                 description,
+                moredetails,
                 createdBy: req.user.id,
                 updatedBy: req.user.id
             };
@@ -75,12 +76,72 @@ module.exports = {
             limit = limit || 10;
             let skip = (page - 1) * limit;
 
-            const query = {
+            let query = {
                
             };
             if (!['admin', 'superadmin'].includes(req.user.role)) {
                 query.isActive = true
             }
+            if (search) {
+                query = {
+                    ...query,
+                    [Op.or]: [
+                        { name: { [Op.like]: `%${search}%` } },
+                        { description: { [Op.like]: `%${search}%` } }
+                    ]
+                };
+            }
+            const services = await Service.findAll({
+                where: query,
+                offset: skip,
+                limit: parseInt(limit),
+                order: [['createdAt', 'DESC']],
+                raw: true
+            },
+            );
+            const count = await Service.count({
+                where: query
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: {
+                    services,
+                    count,
+                },
+                message: 'Service list fetched successfully'
+            });
+        }
+        catch (error) {
+            console.error('Error in Get Service List:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    },
+    /*
+    * @route GET /api/v1/mysdom/service/ext-list
+    * @desc Get list of all services
+    * @authentication  true [admin, user]  
+    * @queryParams page, limit, search
+    * 
+    */
+    getServiceListForExt: async (req, res) => {
+        console.log('Get Service List API.....');
+        try {
+            let { page, limit, search } = req.query;
+            page = page || 1;
+            limit = limit || 10;
+            let skip = (page - 1) * limit;
+
+            let query = {
+               isActive : true
+            };
+            // if (!['admin', 'superadmin'].includes(req.user.role)) {
+            //     query.isActive = true
+            // }
             if (search) {
                 query = {
                     ...query,
@@ -137,7 +198,7 @@ module.exports = {
                     message: 'Validation failed'
                 });
             }
-            const { id, name, isActive, description } = req.body;
+            const { id, name, isActive, description,moredetails } = req.body;
             //let check service on that id already exist or not
             const checkService = await Service.findOne({ where: { id: id} });
             if (!checkService) {
@@ -165,6 +226,7 @@ module.exports = {
                 updatedBy: req.user.id,
                 ...name && { name },
                 ...description && { description },
+                ...moredetails && { moredetails },
                 ...isActive !== undefined && { isActive }
             }
             console.log('updateData:', updateData);

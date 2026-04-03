@@ -14,21 +14,36 @@ const storage = multer.diskStorage({
     // console.log('Determining upload destination for file:', file);
     // You can set different destinations based on file type
     let uploadPath = uploadDir;
-    console.log(file);
+    console.log("file:===",file);
     function getFieldName(fieldname) {
       const match = fieldname.match(/\[([^\]]+)\]$/);
       return match ? match[1] : fieldname;
     }
-    if (file.mimetype.startsWith('image/')) {
-      uploadPath = path.join(uploadDir, `${getFieldName(file.fieldname)}s`); // e.g., static/images
-    } else if (file.mimetype.startsWith('video/')) {
-      uploadPath = path.join(uploadDir, 'videos');
-    } else if (file.mimetype === 'application/pdf') {
-      uploadPath = path.join(uploadDir, 'documents');
-    } else {
-      uploadPath = path.join(uploadDir, 'others');
+    // if (file.mimetype.startsWith('image/')) {
+    //   uploadPath = path.join(uploadDir, `${getFieldName(file.fieldname)}s`); // e.g., static/images
+    // } else if (file.mimetype.startsWith('video/')) {
+    //   uploadPath = path.join(uploadDir, 'videos');
+    // } else if (file.mimetype === 'application/pdf') {
+    //   uploadPath = path.join(uploadDir, 'documents');
+    // } else {
+    //   uploadPath = path.join(uploadDir, 'others');
+    // }
+    console.log("===>>",getFieldName(file.fieldname));
+    let fieldName = getFieldName(file.fieldname);
+    if (fieldName==="id_doc") {
+      uploadPath = `${uploadDir}/id_docs`;
     }
 
+    if (fieldName==="edu_doc") {
+      uploadPath = `${uploadDir}/edu_docs`;
+    }
+
+    if (fieldName==="job_doc") {
+      uploadPath = `${uploadDir}/job_docs`;
+    }
+    if (fieldName==="batch_upload"){
+      uploadPath = `${uploadDir}/batch_upload`;
+    }
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
@@ -36,6 +51,28 @@ const storage = multer.diskStorage({
 
     cb(null, uploadPath);
   },
+  // destination: (req, file, cb) => {
+
+  //   let dir = `${uploadDir}/other`;
+
+  //   if (file.fieldname.includes("id_doc")) {
+  //     dir = `${uploadDir}/id_docs`;
+  //   }
+
+  //   if (file.fieldname.includes("edu_doc")) {
+  //     dir = `${uploadDir}/edu_docs`;
+  //   }
+
+  //   if (file.fieldname.includes("job_doc")) {
+  //     dir = `${uploadDir}/job_docs`;
+  //   }
+
+  //   if (!fs.existsSync(dir)) {
+  //     fs.mkdirSync(dir, { recursive: true });
+  //   }
+
+  //   cb(null, dir);
+  // },
   filename: function (req, file, cb) {
     // Create unique filename: timestamp-randomstring-originalname
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -59,7 +96,10 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'video/mp4',
     'video/mpeg',
-    'video/quicktime'
+    'video/quicktime',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv'
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -119,20 +159,20 @@ const handleMulterError = (err, req, res, next) => {
 module.exports = {
   // Single file upload
   uploadSingle: (fieldName) => upload.single(fieldName),
-  
+
   // Multiple files with same field name
   uploadMultiple: (fieldName, maxCount = 5) => upload.array(fieldName, maxCount),
-  
+
   // Multiple files with different field names
   uploadFields: (fields) => upload.fields(fields),
   // Example: uploadFields([{ name: 'avatar', maxCount: 1 }, { name: 'gallery', maxCount: 5 }])
-  
+
   // Any files
   uploadAny: () => upload.any(),
-  
+
   // Error handler
   handleMulterError,
-  
+
   // Custom middleware for additional validation
   validateUpload: (req, res, next) => {
     console.log('Validating uploaded files...');

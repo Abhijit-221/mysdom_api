@@ -11,12 +11,13 @@ const { Sequelize } = require("sequelize");
 //     logging: false,
 //   }
 // );
-const sequelize = new Sequelize('mysql://avnadmin:AVNS_9If4yV9DFE67N5_ogNM@mysql-80c0d57-swain-96d5.l.aivencloud.com:12504/defaultdb?ssl-mode=REQUIRED');
+const sequelize = new Sequelize('mysql://avnadmin:AVNS_9If4yV9DFE67N5_ogNM@mysql-80c0d57-swain-96d5.l.aivencloud.com:12504/mysdomdb?ssl-mode=REQUIRED');
 const connection = async () => {
   try {
     await sequelize.authenticate();
     // await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     await sequelize.sync({ force: false });
+
     // await BGVRequest.sync({ force: true });
     
     console.log("Connection has been established successfully.");

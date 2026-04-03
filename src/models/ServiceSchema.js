@@ -51,6 +51,11 @@ const Service = sequelize.define('service', {
     allowNull: false,
     required: true,
   },
+  moredetails:{
+  type: DataTypes.JSON,
+    allowNull: true,
+    required: false,
+  },
   createdBy: {
     type: DataTypes.UUID,
     references: {

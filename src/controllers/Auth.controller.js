@@ -301,50 +301,50 @@ module.exports = {
      * @desc Get all users
      * @authentication
      */
-    getAllUsers: async (req,res)=>{
-        console.log('Get All Users API.....');
-        try {
-            let users,count=0;
-            console.log('User role:', req.user.client);
-            let {page,limit,search} = req.query;
-            page = parseInt(page)||1,
-            limit = parseInt(limit)||10;
-            let skip = page*limit-limit;
-            let searchquery = {};
-            if(search){
-                searchquery = {
-                     [Op.or]: [
-                        { username: { [Op.like]: `%${search}%` } },
-                        { email: { [Op.like]: `%${search}%` } },
-                        { role: { [Op.like]: `%${search}%` } }
-                        // { role: { $regex: search, $options: 'i' } }
-                    ]
+        getAllUsers: async (req,res)=>{
+            console.log('Get All Users API.....');
+            try {
+                let users,count=0;
+                console.log('User role:', req.user.client);
+                let {page,limit,search} = req.query;
+                page = parseInt(page)||1,
+                limit = parseInt(limit)||10;
+                let skip = page*limit-limit;
+                let searchquery = {};
+                if(search){
+                    searchquery = {
+                        [Op.or]: [
+                            { username: { [Op.like]: `%${search}%` } },
+                            { email: { [Op.like]: `%${search}%` } },
+                            { role: { [Op.like]: `%${search}%` } }
+                            // { role: { $regex: search, $options: 'i' } }
+                        ]
+                    }
                 }
-            }
-            if(['admin','superadmin'].includes(req.user.role)){
-                users = await User.findAll({where: {...searchquery },raw: true});
-                count = await User.count({where: {...searchquery }});
-            }else{
-                users = await User.findAll({where: {client:req.user.client,...searchquery },raw: true});
-                count = await User.count({where: {client:req.user.client,...searchquery }});
-            }
-            return res.status(ResponseCodes.SUCCESS).json({
-                status: ResponseCodes.SUCCESS,
-                data: {users,count},
-                error: null,
-                message: 'Users fetched successfully'
-            });
-        }
-        catch (error) {
-            console.error('Error in getAllUsers controller:', error);
-            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
-                status: ResponseCodes.INTERNAL_SERVER_ERROR,
-                data: {},
-                error: error.message,
-                message: 'Server error'
+                if(['admin','superadmin'].includes(req.user.role)){
+                    users = await User.findAll({where: {...searchquery },raw: true});
+                    count = await User.count({where: {...searchquery }});
+                }else{
+                    users = await User.findAll({where: {client:req.user.client,...searchquery },raw: true});
+                    count = await User.count({where: {client:req.user.client,...searchquery }});
+                }
+                return res.status(ResponseCodes.SUCCESS).json({
+                    status: ResponseCodes.SUCCESS,
+                    data: {users,count},
+                    error: null,
+                    message: 'Users fetched successfully'
                 });
-        }
-    },
+            }
+            catch (error) {
+                console.error('Error in getAllUsers controller:', error);
+                return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                    status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                    data: {},
+                    error: error.message,
+                    message: 'Server error'
+                    });
+            }
+        },
     /**
      * @route GET /api/auth/users/get/details
      * @desc Get all users

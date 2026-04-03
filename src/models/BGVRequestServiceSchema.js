@@ -74,7 +74,7 @@ const BGVRequestService = sequelize.define('bgv_request_service', {
   },
   updatedBy:{
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: User,
       key: 'id'

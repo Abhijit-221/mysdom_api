@@ -17,7 +17,8 @@ const auth = async (req, res, next) => {
     // Find user
     const user = await User.findOne({
       where: { id: decoded.id },
-      raw: true
+      attributes:['id','username','email','phone','role','client','isActive'],
+      raw: true,
     });
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });

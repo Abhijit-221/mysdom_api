@@ -83,12 +83,12 @@ const BGVRequest = sequelize.define('bgv_request', {
   candidate_email: {
     type: DataTypes.STRING,
     required: true,
-    allowNull: false
+    allowNull: true
   },
   candidate_phone: {
     type: DataTypes.STRING,
     required: true,
-    allowNull: false
+    allowNull: true
   },
   designation: {
     type: DataTypes.STRING,
@@ -181,39 +181,39 @@ const BGVRequest = sequelize.define('bgv_request', {
 
   /* ---------------- EMPLOYMENT CHECK ---------------- */
 
-  company_name: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
+  // company_name: {
+  //   type: DataTypes.STRING,
+  //   allowNull: true
+  // },
 
-  employee_id: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
+  // employee_id: {
+  //   type: DataTypes.STRING,
+  //   allowNull: true
+  // },
 
-  employment_start: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
-  },
+  // employment_start: {
+  //   type: DataTypes.DATEONLY,
+  //   allowNull: true
+  // },
 
-  employment_end: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
-  },
+  // employment_end: {
+  //   type: DataTypes.DATEONLY,
+  //   allowNull: true
+  // },
 
-  job_title: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
+  // job_title: {
+  //   type: DataTypes.STRING,
+  //   allowNull: true
+  // },
 
-  leaving_reason: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  job_doc: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
+  // leaving_reason: {
+  //   type: DataTypes.STRING,
+  //   allowNull: true
+  // },
+  // job_doc: {
+  //   type: DataTypes.STRING,
+  //   allowNull: true
+  // },
   /* ---------------- EDUCATION CHECK ---------------- */
 
   institute_name: {
@@ -282,7 +282,7 @@ const BGVRequest = sequelize.define('bgv_request', {
     }
   },
 
-  assignedTo: {
+  updatedBy: {
     type: DataTypes.UUID,
     allowNull: true,
     references: {

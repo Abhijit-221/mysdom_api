@@ -30,12 +30,14 @@ const clientRoutes = require('./src/routes/Client.routes');
 const serviceRoutes = require('./src/routes/Service.routes');
 const clientServiceRoutes = require('./src/routes/ClientService.routes');
 const bgvRequestRoutes = require('./src/routes/BGVRequest.routes');
+const mailRoutes = require('./src/routes/mail.routes');
 // Use routes
 app.use('/api/v1/mysdom/auth', authRoutes);
 app.use('/api/v1/mysdom/client', clientRoutes);
 app.use('/api/v1/mysdom/service', serviceRoutes);
 app.use('/api/v1/mysdom/client-service',clientServiceRoutes);
 app.use('/api/v1/mysdom/bgvrequest', bgvRequestRoutes);
+app.use('/api/v1/mysdom/mail', mailRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

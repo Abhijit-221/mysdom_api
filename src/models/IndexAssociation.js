@@ -1,7 +1,10 @@
+const BatchUploadService = require("./BGVBatchUploadServiceSchema");
+const BGVEmployment = require("./BGVEmployeementSchema");
 const BGVRequestForm = require("./BGVRequestFormSchema");
 const BGVRequest = require("./BGVRequestSchema");
 const BGVRequestService = require("./BGVRequestServiceSchema");
 const ClientService = require("./ClienServiceSchema");
+const ClientBatchUploadDocs = require("./ClientBatchUploadSchema");
 const Client = require("./ClientSchema");
 const Service = require("./ServiceSchema");
 const User = require("./UserSchema");
@@ -37,15 +40,15 @@ Client.hasMany(BGVRequest,{as:'bgvRequest',foreignKey:'clientId',sourceKey:'id'}
 BGVRequest.belongsTo(User,{as:'submitUser',foreignKey:'submittedBy',targetKey:'id'});
 User.hasMany(BGVRequest,{as:'bgvrequests',foreignKey:'submittedBy',sourceKey:'id'});
 
-BGVRequest.belongsTo(User,{as:'assignedUser',foreignKey:'assignedTo',targetKey:'id'});
-User.hasMany(BGVRequest,{as:'bgvRequests',foreignKey:'assignedTo',sourceKey:'id'});
+BGVRequest.belongsTo(User,{as:'updatedUser',foreignKey:'updatedBy',targetKey:'id'});
+User.hasMany(BGVRequest,{as:'bgvRequests',foreignKey:'updatedBy',sourceKey:'id'});
 
 
 BGVRequest.hasMany(BGVRequestService,{as:'bgvReqestService',foreignKey:'requestId',sourceKey:"id"});
 BGVRequestService.belongsTo(BGVRequest,{as:'bgvRequest',foreignKey:'requestId',targetKey:'id'});
 
 Service.hasMany(BGVRequestService,{as:'bgvReqService',foreignKey:'serviceId',sourceKey:"id"});
-BGVRequestService.belongsTo(Service,{as:'service',foreignKey:'serviceId',targetKey:'id'});
+BGVRequestService.belongsTo(Service,{as:'services',foreignKey:'serviceId',targetKey:'id'});
 
 User.hasMany(BGVRequestService,{as:'bgvReqServices',foreignKey:'createdBy',sourceKey:"id"});
 BGVRequestService.belongsTo(User,{as:'createdUser',foreignKey:'createdBy',targetKey:'id'});
@@ -53,10 +56,27 @@ BGVRequestService.belongsTo(User,{as:'createdUser',foreignKey:'createdBy',target
 User.hasMany(BGVRequestService,{as:'BGVRequestService',foreignKey:'updatedBy',sourceKey:"id"});
 BGVRequestService.belongsTo(User,{as:'updatedUser',foreignKey:'updatedBy',targetKey:'id'});
 
+//BGV employeement request
+BGVRequest.hasMany(BGVEmployment, {
+  foreignKey: "bgvRequestId",
+  as: "employments"
+});
+
+BGVEmployment.belongsTo(BGVRequest, {
+  foreignKey: "bgvRequestId"
+});
+
 //BGV request form service
 BGVRequestForm.belongsTo(BGVRequestService,{as:'bgvRequestService',foreignKey:'req_service_id',targetKey:'id'});
 BGVRequestService.hasMany(BGVRequestForm,{as:'bgvRequestForm',foreignKey:'req_service_id',targetKey:'id'});
 
+//batch upload association
+ClientBatchUploadDocs.belongsTo(Client,{as:'client',foreignKey:'client_id',targetKey:'id'});
+Client.hasMany(ClientBatchUploadDocs,{as:'batchupload_doc',foreignKey:'client_id',targetKey:'id'});
+
+// Batch upload service schema
+BatchUploadService.belongsTo(Service,{as:'service',foreignKey:'service_id',targetKey:'id'});
+Service.hasMany(BatchUploadService,{as:'service',foreignKey:'service_id',targetKey:'id'});
 
 module.exports = {
     Client,
@@ -65,5 +85,7 @@ module.exports = {
     ClientService,
     BGVRequest,
     BGVRequestService,
-    BGVRequestForm
+    BGVRequestForm,
+    ClientBatchUploadDocs,
+    BatchUploadService
 }
