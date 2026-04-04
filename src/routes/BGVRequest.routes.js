@@ -86,8 +86,8 @@ let updateBGVStatusValidation = [
     .withMessage("service ID must be a string"),
   body("status")
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED'])
-    .withMessage("status must be NEW, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED"),
+    .isIn(['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'])
+    .withMessage("status must be NEW, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED or CLOSED"),
 ]
 
 const createBgvRequestValidator = [
@@ -317,7 +317,18 @@ router.post('/create', auth, authorize('user'), uploadAny(), createBGVRequestVal
 
 // Route to update an existing BGV request
 router.get('/get', auth, authorize('superadmin', 'admin', 'user'), bgvRequestController.getBGVRequest);
-router.put('/status/update', auth, authorize('admin', 'superadmin'), updateBGVStatusValidation, bgvRequestController.updateRequestStatus);
+
+const bgvServiceStatusDocs = [
+  { name: 'doc_1', maxCount: 1 },
+  { name: 'doc_2', maxCount: 1 },
+];
+router.put('/status/update',
+  auth, authorize('admin', 'superadmin'),
+  uploadFields(bgvServiceStatusDocs),
+  updateBGVStatusValidation, 
+  bgvRequestController.updateRequestStatus
+);
+
 router.post('/apply', auth, authorize('user'), uploadAny(), createBgvRequestValidator, bgvRequestController.bgvReqCreate);
 router.get('/getby/:req_id', auth, authorize('superadmin', 'admin', 'user'), bgvRequestController.getBGVRequestById);
 router.post('/bulk-upload', auth, authorize('user'), uploadSingle("batch_upload"), bgvRequestController.uploadCandidates);
@@ -341,13 +352,6 @@ const updateBGVRequestValidation = [
     .withMessage("id is required")
     .isString()
     .withMessage("id must be a string"),
-
-  // body("assignedTo")
-  //   .notEmpty()
-  //   .withMessage("assignedTo is required")
-  //   .isString()
-  //   .withMessage("assignedTo must be a string"),
-
   body("slaDueDate")
     .optional({ nullable: true, checkFalsy: true })
     .isISO8601()
@@ -478,13 +482,7 @@ const updateBGVRequestValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isInt({ min: 1900, max: 2100 })
     .withMessage("Invalid passing year"),
-  /* STATUS */
-
-  // body("status")
-  //   .optional({ nullable: true, checkFalsy: true })
-  //   .isIn(["NEW", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED"])
-  //   .withMessage("Invalid status"),
-
+  
   body("priority")
     .if((value) => value)
     .toUpperCase()
@@ -496,11 +494,6 @@ const updateBGVRequestValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isUUID()
     .withMessage("assignedTo must be UUID"),
-
-  // body("slaDueDate")
-  //   .optional({ checkFalsy: true })
-  //   .isISO8601()
-  //   .withMessage("Invalid SLA date"),
   body("addservice")
     .optional()
     .custom((value) => {
@@ -533,12 +526,7 @@ const updateBGVRequestValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isUUID()
     .withMessage("service must be UUID"),
-  // body("assignedTo")
-  //   .notEmpty()
-  //   .withMessage("assignedTo is required")
-  //   .isString()
-  //   .withMessage("assignedTo must be a string"),
-
+ 
   //bgv employeement ----
 
   body("bgvEmployments")
@@ -552,10 +540,7 @@ const updateBGVRequestValidation = [
       }
       return true;
     }).withMessage("Employment must be an array"),
-//  body("bgvEmployments")
-//     .optional({ nullable: true, checkFalsy: true })
-//     .isArray()
-//     .withMessage("Employment must be an array"),
+
   body("bgvEmployments.*.company_name")
     .optional({ nullable: true, checkFalsy: true })
     .isString()

@@ -44,6 +44,9 @@ const storage = multer.diskStorage({
     if (fieldName==="batch_upload"){
       uploadPath = `${uploadDir}/batch_upload`;
     }
+    if(fieldName==="doc_1"||fieldName==="doc_2"){
+      uploadPath = `${uploadDir}/bgvservice_docs`;
+    }
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });

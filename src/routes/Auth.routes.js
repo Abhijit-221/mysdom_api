@@ -74,9 +74,26 @@ body('gender')
 
 ];
 
+const forgotPasswordValidation = [
+  body('email').trim().notEmpty().isEmail().normalizeEmail().withMessage('Invalid email'),
+  body('otp').trim().notEmpty().withMessage('OTP is required'),
+  body('newPassword').trim().notEmpty().isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+];
+const forgotSenndCodeValidate = [
+  body('email').trim().notEmpty().isEmail().normalizeEmail().withMessage('Invalid email'),
+];
+const verifyOtpValidate = [
+  body('email').trim().notEmpty().isEmail().normalizeEmail().withMessage('Invalid email'),
+  body('otp').trim().notEmpty().withMessage('OTP is required'),
+];
+
 // Public routes
 Authrouter.post('/register', registerValidation, authController.register);
 Authrouter.post('/login', loginValidation, authController.login);
+Authrouter.post('/forgot-send-otp', forgotSenndCodeValidate, authController.forgotCodeSend);
+Authrouter.post('/verify-otp', verifyOtpValidate, authController.verifyOTP);
+Authrouter.post('/reset-password', forgotPasswordValidation, authController.forgotPassword);
+
 Authrouter.post('/user-add', auth,authorize('superadmin'), addUserValidation, authController.addUser);
 Authrouter.post('/user-update', auth,authorize('superadmin','admin','user'), uploadSingle('profile_pic'), updateUserValidation, authController.updateUser);
 

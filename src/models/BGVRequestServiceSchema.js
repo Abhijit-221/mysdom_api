@@ -61,8 +61,16 @@ const BGVRequestService = sequelize.define('bgv_request_service', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED'),
+    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
     defaultValue: 'NEW'
+  },
+  doc_1:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  doc_2:{
+    type: DataTypes.STRING,
+    allowNull: true
   },
   createdBy:{
     type: DataTypes.UUID,

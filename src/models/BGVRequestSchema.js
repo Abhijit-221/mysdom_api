@@ -75,6 +75,11 @@ const BGVRequest = sequelize.define('bgv_request', {
       key: 'id'
     }
   },
+  req_code:{
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  },
   candidate_name: {
     type: DataTypes.STRING,
     required: true,
@@ -261,7 +266,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   status: {
-    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED'),
+    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
     // enum: ['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CLOSED'],
     allowNull: false,
     defaultValue: 'NEW'

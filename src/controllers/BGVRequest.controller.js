@@ -17,6 +17,25 @@ const { v4: uuidv4 } = require('uuid');
 const ClientBatchUploadDocs = require("../models/ClientBatchUploadSchema");
 const { raw } = require("express");
 const BatchUploadService = require("../models/BGVBatchUploadServiceSchema");
+
+
+// const fs = require('fs/promises');
+//delete files if error or any error occur in API//for fields uploaded files
+const deleteUploadedFiles = async (files) => {
+    if (!files) return;
+
+    for (const field of Object.keys(files)) {
+        for (const file of files[field]) {
+            try {
+                const filePath = path.resolve(file.path);
+                await fs.unlinkSync(filePath);
+                console.log(`Deleted: ${filePath}`);
+            } catch (err) {
+                console.error(`Error deleting ${file.path}:`, err.message);
+            }
+        }
+    }
+};
 module.exports = {
     /*
     * @route POST /api/v1/mysdom/BGVRequest/create
@@ -138,17 +157,17 @@ module.exports = {
                 });
             }
             let getLastBgvRequest = await BGVRequest.findOne({
-                where:{},
-                order:[['createdAt','desc']],
+                where: {},
+                order: [['createdAt', 'desc']],
             });
-            if(getLastBgvRequest && getLastBgvRequest.request_id){
-                if(getLastBgvRequest.request_id){
-                    let newDigit = parseInt(getLastBgvRequest.request_id.split('-')[3])+1
+            if (getLastBgvRequest && getLastBgvRequest.request_id) {
+                if (getLastBgvRequest.request_id) {
+                    let newDigit = parseInt(getLastBgvRequest.request_id.split('-')[3]) + 1
                     inputData.request_id = `MYS-TRL-BBS-${newDigit}`
                 }
             }
-            else{
-                inputData.request_id="MYS-TRL-BBS-1"
+            else {
+                inputData.request_id = "MYS-TRL-BBS-1"
             }
             //let create BGV request
             let newBGVRequest = await BGVRequest.create({
@@ -369,7 +388,7 @@ module.exports = {
                 req.files.forEach(file => {
 
                     const match = file.fieldname.match(/bgvEmployments\[(\d+)\]\[job_doc\]/);
-                    console.log("match:",match);
+                    console.log("match:", match);
                     if (!match) {
                         if (file.fieldname === 'id_doc') {
                             inputData.id_doc = file.path;
@@ -398,7 +417,7 @@ module.exports = {
                 // inputData.edu_doc = req.files.edu_doc ? req.files.edu_doc[0].path : null;
 
             }
-            console.log('bgv inputData:', inputData,bgvEmployments);
+            console.log('bgv inputData:', inputData, bgvEmployments);
 
 
             const bgvRequestData = Object.fromEntries(
@@ -461,8 +480,14 @@ module.exports = {
                             });
                         }
                         else {
-                            console.log('employeement :',employement)
+                            for (let key in employement) {
+                                if (employement[key] === '' || employement[key] === undefined) {
+                                    employement[key] = null;
+                                }
+                            }
+                            console.log('employeement :', employement)
                             employement['bgvRequestId'] = id;
+                            delete employement.id;
                             const checkExistEmployeement = await BGVEmployment.findOne({
                                 where: {
                                     [Op.or]: [
@@ -483,7 +508,7 @@ module.exports = {
                     for (let emp of removeEmployments) {
                         const getEmployeement = await BGVEmployment.findOne({
                             where: {
-                                id: emp.id
+                                id: emp
                             },
                             transaction: t,
                             raw: true
@@ -494,7 +519,7 @@ module.exports = {
                         }
                         await BGVEmployment.destroy({
                             where: {
-                                id: emp.id
+                                id: emp
                             }, transaction: t
                         })
                     }
@@ -530,7 +555,7 @@ module.exports = {
                             },
                             raw: true
                         });
-                        if(checkServiceExist){
+                        if (checkServiceExist) {
                             let deleted = await BGVRequestService.destroy({
                                 where: {
                                     requestId: inputData.id,
@@ -581,7 +606,7 @@ module.exports = {
             let { page, limit, search, status } = req.query;
             page = parseInt(page) || 1;
             limit = parseInt(limit) || 10;
-            let skip = (page*limit)-limit;
+            let skip = (page * limit) - limit;
             console.log(limit, skip)
 
             let whereClause = {};
@@ -600,6 +625,7 @@ module.exports = {
                     ...whereClause.where,
                     [Op.or]: [
                         { candidate_name: { [Op.like]: `%${search}%` } },
+                        { req_code: { [Op.like]: `%${search}%` } },
                         { candidate_email: { [Op.like]: `%${search}%` } },
                         { candidate_phone: { [Op.like]: `%${search}%` } },
                     ]
@@ -692,8 +718,14 @@ module.exports = {
     updateRequestStatus: async (req, res) => {
         console.log('update bgv request status api...');
         try {
+            const file = req.files;
+            console.log('file:', req.files);
             const validationErrors = validationResult(req);
             if (!validationErrors.isEmpty()) {
+                if (req.files) {
+                    await deleteUploadedFiles(req.files);
+                }
+
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
                     data: {},
@@ -711,6 +743,9 @@ module.exports = {
                 raw: true
             });
             if (!bgvRequest) {
+                if (req.files) {
+                    await deleteUploadedFiles(req.files);
+                }
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
@@ -723,10 +758,23 @@ module.exports = {
                 remark: remark || bgvRequest.remark,
                 updatedBy: req.user.id
             };
+            if (req.files && Object.keys(req.files).length > 0) {
+                Object.keys(req.files).forEach((field) => {
+                    const fileArr = req.files[field];
 
-            // if (remark) {
-            //     updateData.remark = remark;
-            // }
+                    if (fileArr && fileArr.length > 0) {
+                        // assign first file path
+                        updateData[field] = fileArr[0].path.replace(/\\/g, '/');
+                    }
+                });
+            }
+
+            if (updateData.doc_1) {
+                await fs.unlinkSync(bgvRequest.doc_1);
+            }
+              if (updateData.doc_2) {
+                await fs.unlinkSync(bgvRequest.doc_2);
+            }
             let updateBGV = await BGVRequestService.update(updateData, {
                 where: {
                     requestId: request_id,
@@ -747,6 +795,7 @@ module.exports = {
                 const allRejected = statuses.every(s => s === "REJECTED");
                 const allCompleted = statuses.every(s => s === "COMPLETED");
                 const allHold = statuses.every(s => s === "ON_HOLD");
+                const allClosed = statuses.every(s => s === "CLOSED");
 
                 if (allRejected) {
                     finalStatus = "REJECTED";
@@ -754,6 +803,9 @@ module.exports = {
                     finalStatus = "COMPLETED";
                 } else if (allHold) {
                     finalStatus = "ON_HOLD";
+                }
+                else if (allClosed) {
+                    finalStatus = "CLOSED";
                 }
             }
             await BGVRequest.update(
@@ -778,6 +830,9 @@ module.exports = {
         }
         catch (error) {
             console.log('Error in Get Services of BGV Request:', error);
+            if (req.files) {
+                await deleteUploadedFiles(req.files);
+            }
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
                 status: ResponseCodes.INTERNAL_SERVER_ERROR,
                 data: {},
@@ -921,11 +976,31 @@ module.exports = {
                 // inputData.edu_doc = req.files.edu_doc ? req.files.edu_doc[0].path : null;
 
             }
+
+            let getLastBgvRequest = await BGVRequest.findOne({
+                where: {},
+                order: [['createdAt', 'desc']],
+            });
+
+            let newDigit = 1;
+
+            if (getLastBgvRequest?.req_code) {
+                const parts = getLastBgvRequest.req_code.split('-');
+                const lastNumber = parseInt(parts[3], 10);
+
+                if (!isNaN(lastNumber)) {
+                    newDigit = lastNumber + 1;
+                }
+            }
+            // pad with leading zeros (4 digits)
+            const paddedNumber = String(newDigit).padStart(4, '0');
+
+            inputData.req_code = `MYS-TRL-BBS-${paddedNumber}`;
             console.log("inputData:", inputData);
             let createTransaction = await sequelize.transaction(async (t) => {
 
                 let createBgvRequest = await BGVRequest.create(inputData, { transaction: t });
-                if(inputData.bgvEmployments && inputData.bgvEmployments.length){
+                if (inputData.bgvEmployments && inputData.bgvEmployments.length) {
                     let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
                         const cleanedData = Object.fromEntries(
                             Object.entries(employeeDetail).map(([key, value]) => [
@@ -1172,7 +1247,7 @@ module.exports = {
 
                 if (row.candidate_email && !/\S+@\S+\.\S+/.test(row.candidate_email))
                     rowErrors.push("Invalid email");
-                console.log('phone:',row.candidate_phone);
+                console.log('phone:', row.candidate_phone);
                 if (row.candidate_phone && row.candidate_phone.toString().length < 10)
                     rowErrors.push("Invalid phone");
 
@@ -1359,9 +1434,9 @@ module.exports = {
             }
             console.error(err);
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
-                status:ResponseCodes.INTERNAL_SERVER_ERROR,
-                data:{},
-                error:err,
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: err,
                 message: "Server error",
             });
         }
@@ -1371,64 +1446,64 @@ module.exports = {
     /**
      * 
      */
-    createBatchUploadService : async(req,res)=> {
-        try{
+    createBatchUploadService: async (req, res) => {
+        try {
             let inputData = req.body;
-            if(!inputData.service_id){
+            if (!inputData.service_id) {
                 return res.status(ResponseCodes.BAD_REQUEST).json({
-                    status:ResponseCodes.BAD_REQUEST,
-                    data:{},
-                    error:{message:"Invalid input, service_id required"},
-                    message:"Invalid input, service_id required"
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: { message: "Invalid input, service_id required" },
+                    message: "Invalid input, service_id required"
                 })
             }
             let getService = await Service.findOne({
-                where:{
-                    id:inputData.service_id,
+                where: {
+                    id: inputData.service_id,
                 },
-                raw:true
+                raw: true
             });
-            if(!getService){
+            if (!getService) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
-                    status:ResponseCodes.NOT_FOUND,
-                    data:{},
-                    error:{message:"Service not found, check service_id"},
-                    message:"Service not found"
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: { message: "Service not found, check service_id" },
+                    message: "Service not found"
                 });
             }
             //let create or update 
             let getBachUploadService = await BatchUploadService.findOne({
-                where:{},
-                limit:1,
-                raw:true,
+                where: {},
+                limit: 1,
+                raw: true,
             });
-            if(getBachUploadService){
-                await BatchUploadService.update({service_id:inputData.service_id},{
-                    where:{
-                        id:getBachUploadService.id
+            if (getBachUploadService) {
+                await BatchUploadService.update({ service_id: inputData.service_id }, {
+                    where: {
+                        id: getBachUploadService.id
                     }
                 })
             }
-            else{
-                await BatchUploadService.create({service_id:inputData.service_id});
+            else {
+                await BatchUploadService.create({ service_id: inputData.service_id });
             }
-             let bachUploadService = await BatchUploadService.findOne({
-                where:{},
-                raw:true,
+            let bachUploadService = await BatchUploadService.findOne({
+                where: {},
+                raw: true,
             });
             return res.status(ResponseCodes.SUCCESS).json({
-                status:ResponseCodes.SUCCESS,
-                data:bachUploadService,
-                error:{},
-                message:"Bath upload saved successfully"
+                status: ResponseCodes.SUCCESS,
+                data: bachUploadService,
+                error: {},
+                message: "Bath upload saved successfully"
             })
 
         }
-        catch(error){
+        catch (error) {
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
-                status:ResponseCodes.INTERNAL_SERVER_ERROR,
-                data:{},
-                error:error,
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error,
                 message: "Server error",
             });
         }
@@ -1439,33 +1514,33 @@ module.exports = {
     /**
      * 
      */
-    getBathUploadService:async(req,res)=>{
-        try{
-            let getBatchUploadService=await BatchUploadService.findOne({
-                where:{},
-                raw:true,
+    getBathUploadService: async (req, res) => {
+        try {
+            let getBatchUploadService = await BatchUploadService.findOne({
+                where: {},
+                raw: true,
             });
-            if(!getBatchUploadService){
+            if (!getBatchUploadService) {
                 return res.status(ResponseCodes.NOT_FOUND).json({
-                    status:ResponseCodes.NOT_FOUND,
-                    data:{},
-                    error:{message:"Service not found"},
-                    message:"Service not found"
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: { message: "Service not found" },
+                    message: "Service not found"
                 })
             }
             return res.status(ResponseCodes.SUCCESS).json({
-                status:ResponseCodes.SUCCESS,
-                data:getBatchUploadService,
-                error:{},
-                message:"Batch upload service fetched successfully"
+                status: ResponseCodes.SUCCESS,
+                data: getBatchUploadService,
+                error: {},
+                message: "Batch upload service fetched successfully"
             })
 
         }
-        catch(error){
+        catch (error) {
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
-                status:ResponseCodes.INTERNAL_SERVER_ERROR,
-                data:{},
-                error:error,
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error,
                 message: "Server error",
             });
         }
