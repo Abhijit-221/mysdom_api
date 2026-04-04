@@ -78,7 +78,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   req_code:{
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true
+    // unique: true
   },
   candidate_name: {
     type: DataTypes.STRING,
@@ -304,5 +304,13 @@ const BGVRequest = sequelize.define('bgv_request', {
   timestamps: true,
   paranoid: true,
   tableName: 'bgv_requests'
+});
+BGVRequest.beforeValidate((instance) => {
+  if (!instance.req_code) {
+    const ts = Date.now().toString().slice(-6);
+    const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+
+    instance.req_code = `MYS-TRL-BBS-${ts}${rand}`;
+  }
 });
 module.exports = BGVRequest;

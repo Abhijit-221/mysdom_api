@@ -977,25 +977,25 @@ module.exports = {
 
             }
 
-            let getLastBgvRequest = await BGVRequest.findOne({
-                where: {},
-                order: [['createdAt', 'desc']],
-            });
+            // let getLastBgvRequest = await BGVRequest.findOne({
+            //     where: {},
+            //     order: [['createdAt', 'desc']],
+            // });
 
-            let newDigit = 1;
+            // let newDigit = 1;
 
-            if (getLastBgvRequest?.req_code) {
-                const parts = getLastBgvRequest.req_code.split('-');
-                const lastNumber = parseInt(parts[3], 10);
+            // if (getLastBgvRequest?.req_code) {
+            //     const parts = getLastBgvRequest.req_code.split('-');
+            //     const lastNumber = parseInt(parts[3], 10);
 
-                if (!isNaN(lastNumber)) {
-                    newDigit = lastNumber + 1;
-                }
-            }
-            // pad with leading zeros (4 digits)
-            const paddedNumber = String(newDigit).padStart(4, '0');
+            //     if (!isNaN(lastNumber)) {
+            //         newDigit = lastNumber + 1;
+            //     }
+            // }
+            // // pad with leading zeros (4 digits)
+            // const paddedNumber = String(newDigit).padStart(4, '0');
 
-            inputData.req_code = `MYS-TRL-BBS-${paddedNumber}`;
+            // inputData.req_code = `MYS-TRL-BBS-${paddedNumber}`;
             console.log("inputData:", inputData);
             let createTransaction = await sequelize.transaction(async (t) => {
 
