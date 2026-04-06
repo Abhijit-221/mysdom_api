@@ -769,11 +769,11 @@ module.exports = {
                 });
             }
 
-            if (updateData.doc_1) {
-                await fs.unlinkSync(bgvRequest.doc_1);
+            if (updateData.doc_1 && bgvRequest.doc_1 && fsSync.existsSync(bgvRequest.doc_1)) {
+                await fs.unlink(bgvRequest.doc_1);
             }
-              if (updateData.doc_2) {
-                await fs.unlinkSync(bgvRequest.doc_2);
+            if (updateData.doc_2 && bgvRequest.doc_2 && fsSync.existsSync(bgvRequest.doc_2)) {
+                await fs.unlink(bgvRequest.doc_2);
             }
             let updateBGV = await BGVRequestService.update(updateData, {
                 where: {
