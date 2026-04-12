@@ -17,6 +17,7 @@ const { v4: uuidv4 } = require('uuid');
 const ClientBatchUploadDocs = require("../models/ClientBatchUploadSchema");
 const { raw } = require("express");
 const BatchUploadService = require("../models/BGVBatchUploadServiceSchema");
+const jwt = require('jsonwebtoken');
 
 
 // const fs = require('fs/promises');
@@ -769,11 +770,11 @@ module.exports = {
                 });
             }
 
-            if (updateData.doc_1 && bgvRequest.doc_1 && fsSync.existsSync(bgvRequest.doc_1)) {
-                await fs.unlink(bgvRequest.doc_1);
+            if (updateData.doc_1 && bgvRequest.doc_1 && fs.existsSync(bgvRequest.doc_1)) {
+                await fs.unlinkSync(bgvRequest.doc_1);
             }
-            if (updateData.doc_2 && bgvRequest.doc_2 && fsSync.existsSync(bgvRequest.doc_2)) {
-                await fs.unlink(bgvRequest.doc_2);
+            if (updateData.doc_2 && bgvRequest.doc_2 && fs.existsSync(bgvRequest.doc_2)) {
+                await fs.unlinkSync(bgvRequest.doc_2);
             }
             let updateBGV = await BGVRequestService.update(updateData, {
                 where: {
@@ -1060,20 +1061,20 @@ module.exports = {
         console.log('BGV request services get API...');
         try {
             let { request_id } = req.params;
-
+            console.log(request_id);
             let whereClause = {
-                id: request_id
+                where:{id: request_id}
             };
-            if (req.user.role === 'user') {
-                let user = await User.findOne({
-                    where: {
-                        id: req.user.id
-                    }
-                });
-                whereClause.where = {
-                    clientId: user.client
-                }
-            }
+            // if (req.user.role === 'user') {
+            //     let user = await User.findOne({
+            //         where: {
+            //             id: req.user.id
+            //         }
+            //     });
+            //     whereClause.where = {
+            //         clientId: user.client
+            //     }
+            // }
 
 
             let bgvRequests = await BGVRequest.findOne({
@@ -1081,7 +1082,8 @@ module.exports = {
                 include: [
                     {
                         model: Client,
-                        as: 'client'
+                        as: 'client',
+                        required:true
                     },
                     {
                         model: BGVEmployment,
@@ -1103,8 +1105,8 @@ module.exports = {
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
-                    error: "Applicant Request form not found",
-                    message: "Applicant Request form not found"
+                    error: "Applicant Request/service form not found",
+                    message: "Applicant Request/service form not found"
                 })
             }
             return res.status(ResponseCodes.SUCCESS).json({
@@ -1542,6 +1544,313 @@ module.exports = {
                 data: {},
                 error: error,
                 message: "Server error",
+            });
+        }
+    },
+    /**
+     * generate form
+     */
+    generateFormLink: async (req, res) => {
+        console.log('generate form link API...');
+        try {
+            const user = req.user;
+            let getSuperAdmin = await User.findOne({
+                where: {
+                    role: 'superadmin'
+                },
+                raw: true
+            });
+
+            const token = await jwt.sign(
+                {
+                    clientId: user.client,
+                    assignedTo: getSuperAdmin.id,
+                    submittedBy: req.user.id
+                },
+                "SECRET_KEY#$77#",
+                {
+                    expiresIn: '1d' // 👈 expiry here
+                }
+            );
+
+            const link = `${process.env.FRONTEND_URL}/bgv/form/${token}`;
+
+            return res.status(ResponseCodes.SUCCESS).json(
+                {
+                    status: ResponseCodes.SUCCESS,
+                    data: { link },
+                    error: {},
+                    message: "Link generated",
+                }
+            )
+
+
+        }
+        catch (error) {
+            console.log("server error", error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error,
+                message: "Server error",
+            });
+        }
+    },
+
+
+    verifyToken: async (req, res) => {
+        try {
+            let { token } = req.params;
+
+            if (!token || typeof token !== "string") {
+                return res.status(ResponseCodes.UNAUTHORIZED).json({
+                    status: ResponseCodes.UNAUTHORIZED,
+                    data: {},
+                    error: { message: "Authentication token is missing" },
+                    message: "No authentication token, access denied",
+                });
+            }
+
+            token = token.trim();
+
+            if (token.startsWith("Bearer ")) {
+                token = token.split(" ")[1];
+            }
+
+            const decodedToken = await jwt.verify(token, "SECRET_KEY#$77#");
+
+            console.log(decodedToken);
+
+            if (!decodedToken || !decodedToken.clientId) {
+                return res.status(ResponseCodes.UNAUTHORIZED).json({
+                    status: ResponseCodes.UNAUTHORIZED,
+                    data: {},
+                    error: { message: "Invalid authentication token payload" },
+                    message: "Access denied",
+                });
+            }
+
+            return res.status(ResponseCodes.SUCCESS).json({
+                status: ResponseCodes.SUCCESS,
+                data: decodedToken,
+                error: {},
+                message: "Token verified successfully",
+            });
+        } catch (error) {
+            console.log("JWT verify error:", error);
+
+            if (error.name === "TokenExpiredError") {
+                return res.status(ResponseCodes.UNAUTHORIZED).json({
+                    status: ResponseCodes.UNAUTHORIZED,
+                    data: {},
+                    error: {
+                        message: "Token expired",
+                        expiredAt: error.expiredAt,
+                    },
+                    message: "Session expired, please login again",
+                });
+            }
+
+            if (error.name === "JsonWebTokenError") {
+                return res.status(ResponseCodes.UNAUTHORIZED).json({
+                    status: ResponseCodes.UNAUTHORIZED,
+                    data: {},
+                    error: { message: "Malformed or invalid token" },
+                    message: "Invalid authentication token",
+                });
+            }
+
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: { message: "Internal server error" },
+                message: "Server error",
+            });
+        }
+    },
+
+    bgvUserApplyForm: async(req,res)=>{
+        console.log('User apply form submit  API...');
+        try {
+            const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                if (req.files && req.files.length) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let inputData = req.body;
+           
+            let client = await Client.findOne({
+                where: { id: inputData.clientId, isActive: true }, raw: true
+            });
+            if (!client) {
+                if (req.files && req.files.length) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: 'Client not found',
+                    message: 'Client not found'
+                });
+            }
+            let checkBGVRequest = await BGVRequest.findOne({
+                where: {
+                    [Op.or]: [
+                        { candidate_email: inputData.candidate_email },
+                        { candidate_phone: inputData.candidate_phone }
+                    ],
+                    status: { [Op.notIn]: ['REJECTED', 'COMPLETED'] },
+                    clientId: client.id,
+                },
+                raw: true
+            });
+            if (checkBGVRequest) {
+                if (req.files && req.files.length) {
+                    req.files.forEach(file => {
+                        fs.unlink(file.path, () => { });
+                    });
+                }
+                return res.status(ResponseCodes.CONFLICT).json({
+                    status: ResponseCodes.CONFLICT,
+                    data: {},
+                    error: 'BGV request already exist with same candidate email or phone',
+                    message: 'BGV request already exist with same candidate email or phone'
+                });
+            }
+
+            console.log(inputData);
+            //let get service with this client exist 
+            // let serviceError = []
+            // for (const serviceid of inputData.service) {
+
+            //     let clientService = await ClientService.findOne({
+            //         where: {
+            //             clientId: client.id,
+            //             serviceId: serviceid
+            //         },
+            //     });
+            //     if (!clientService) {
+            //         serviceError.push(serviceid);
+            //     }
+            // };
+            // if (serviceError.length) {
+            //     if (req.files && req.files.length) {
+            //         req.files.forEach(file => {
+            //             fs.unlink(file.path, () => { });
+            //         });
+            //     }
+            //     return res.status(ResponseCodes.NOT_FOUND).json({
+
+            //         status: ResponseCodes.NOT_FOUND,
+            //         data: [],
+            //         error: `Client with these services not found,${serviceError}`,
+            //         message: `Client with these services not found`,
+
+            //     })
+            // }
+            
+            
+            // inputData.submittedBy = req.user.id;
+            if (req.files && req.files.length) {
+
+                req.files.forEach(file => {
+
+                    const match = file.fieldname.match(/bgvEmployments\[(\d+)\]\[job_doc\]/);
+
+                    if (!match) {
+                        if (file.fieldname === 'id_doc') {
+                            inputData.id_doc = file.path;
+                        }
+                        if (file.fieldname === 'edu_doc') {
+                            inputData.edu_doc = file.path;
+                        }
+                        return;
+                    }
+
+                    const index = match[1];
+
+                    if (!req.body.bgvEmployments) {
+                        req.body.bgvEmployments = [];
+                    }
+
+                    if (!req.body.bgvEmployments[index]) {
+                        req.body.bgvEmployments[index] = {};
+                    }
+
+                    req.body.bgvEmployments[index].job_doc = file.path;
+
+                });
+                console.log("--->", req.files);
+                // inputData.id_doc = req.files.id_doc ? req.files.id_doc[0].path : null;
+                // inputData.job_doc = req.files.job_doc ? req.files.job_doc[0].path : null;
+                // inputData.edu_doc = req.files.edu_doc ? req.files.edu_doc[0].path : null;
+
+            }
+
+        
+            console.log("inputData:", inputData);
+            let createTransaction = await sequelize.transaction(async (t) => {
+
+                let createBgvRequest = await BGVRequest.create(inputData, { transaction: t });
+                if (inputData.bgvEmployments && inputData.bgvEmployments.length) {
+                    let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
+                        const cleanedData = Object.fromEntries(
+                            Object.entries(employeeDetail).map(([key, value]) => [
+                                key,
+                                value === "" ? null : value
+                            ])
+                        );
+                        return {
+                            ...cleanedData,
+                            bgvRequestId: createBgvRequest.id
+                        }
+                    });
+                    let createEmployeeDetails = await BGVEmployment.bulkCreate(employeeDetailsData, { transaction: t });
+                }
+                // let reqService = inputData.service.map((serviceid) => {
+                //     return {
+                //         requestId: createBgvRequest.id,
+                //         serviceId: serviceid,
+                //         createdBy: req.user.id,
+                //         updatedBy: req.user.id
+                //     }
+                // });
+
+                // let createServices = await BGVRequestService.bulkCreate(reqService, { transaction: t });
+                return createBgvRequest;
+            })
+
+            return res.status(ResponseCodes.CREATED).json({
+                status: ResponseCodes.CREATED,
+                data: createTransaction,
+                error: {},
+                message: "Request created successfully."
+            })
+
+        }
+        catch (error) {
+            console.log('Error in Get Services of BGV Request:', error);
+            if (req.files && req.files.length) {
+                req.files.forEach(file => {
+                    fs.unlink(file.path, () => { });
+                });
+            }
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
             });
         }
     }

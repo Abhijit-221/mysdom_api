@@ -678,5 +678,35 @@ module.exports = {
                 message: 'Server error'
             });
         }
+    },
+
+    getSuperAdmin: async(req,res)=>{
+        try{
+
+            let getUser = await User.findOne({
+                where:{
+                    role:"superadmin"
+                },
+                raw:true
+            });
+
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:getUser,
+                error:{},
+                mesage:"Admin get successfully"
+            })
+
+        }
+        catch(error){
+            console.error('Error in forgotPassword controller:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+
     }
 }

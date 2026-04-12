@@ -23,6 +23,7 @@ router.post('/add', auth, authorize('admin', 'superadmin'), addServiceValidation
 router.get('/list', auth, authorize('admin', 'superadmin', 'user'), ClientServiceController.getClientServiceList);
 router.put('/update', auth, authorize('admin', 'superadmin'), updateServiceValidation, ClientServiceController.updateClientService);
 router.get('/getby/:client_id', auth, authorize('admin', 'superadmin', 'user'), ClientServiceController.getClientServiceByClient);
+router.post('/delete', auth, authorize('admin', 'superadmin'), ClientServiceController.deleteClientService);
 
 
 module.exports = router;

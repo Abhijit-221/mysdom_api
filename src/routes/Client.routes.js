@@ -57,6 +57,14 @@ router.get('/get', auth, authorize('admin', 'superadmin',), clientController.get
 router.get('/get-all', auth, authorize('admin', 'superadmin',), clientController.getAllClients);
 router.get('/get/:id', auth, authorize('admin', 'superadmin'), clientController.getClientById);
 router.put('/update', auth, authorize('admin', 'superadmin'), updateClientValidation, clientController.updateClient);
-// router.delete('/delete/:id', auth, authorize('admin','superadmin'), clientController.deleteClient);
+router.get('/users/users/:clientid', auth, authorize('admin', 'superadmin'), clientController.getClientUser);
+
+const deleteClientValidation = [
+    body('id')
+    .trim()
+    .notEmpty().withMessage('id must be required')
+    .isUUID()
+];
+router.post('/delete', auth, authorize('admin','superadmin'),deleteClientValidation, clientController.deleteClient);
 
 module.exports = router;

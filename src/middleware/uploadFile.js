@@ -78,6 +78,10 @@ const storage = multer.diskStorage({
   // },
   filename: function (req, file, cb) {
     // Create unique filename: timestamp-randomstring-originalname
+    // function getCleanFileName(file) {
+    //   return file.filename.replace(/\s+/g, '');
+    // }
+    file.originalname=file.originalname.replace(/\s+/g, '');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     const nameWithoutExt = path.basename(file.originalname, ext);

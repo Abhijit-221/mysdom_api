@@ -330,7 +330,7 @@ router.put('/status/update',
 );
 
 router.post('/apply', auth, authorize('user'), uploadAny(), createBgvRequestValidator, bgvRequestController.bgvReqCreate);
-router.get('/getby/:req_id', auth, authorize('superadmin', 'admin', 'user'), bgvRequestController.getBGVRequestById);
+router.get('/getby/:request_id', auth, authorize('superadmin', 'admin', 'user'), bgvRequestController.getBGVRequestById);
 router.post('/bulk-upload', auth, authorize('user'), uploadSingle("batch_upload"), bgvRequestController.uploadCandidates);
 const parseJSONFields = (fields) => (req, res, next) => {
   fields.forEach((field) => {
@@ -610,5 +610,234 @@ router.get('/batchupload/service-get',
   bgvRequestController.getBathUploadService
 )
 
+router.get('/form-link/generate',
+  auth,
+  authorize('user'),
+  bgvRequestController.generateFormLink
+)
+
+router.get('/token/verify/:token',
+  bgvRequestController.verifyToken
+);
+
+
+const bgvReqApplyValidation = [
+
+  /* CLIENT */
+
+  body("clientId")
+    .notEmpty()
+    .withMessage("Client ID is required")
+    .isUUID()
+    .withMessage("Client ID must be a valid UUID"),
+
+  /* CANDIDATE */
+
+  body("candidate_name")
+    .notEmpty()
+    .withMessage("Candidate name is required")
+    .isLength({ min: 2 })
+    .withMessage("Candidate name must be at least 2 characters"),
+
+  body("candidate_email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid email format"),
+
+  body("candidate_phone")
+    .notEmpty()
+    .withMessage("Phone number is required")
+    .isMobilePhone("en-IN")
+    .withMessage("Invalid phone number"),
+
+  body("designation")
+    .optional()
+    .isString(),
+
+  body("department")
+    .optional()
+    .isString(),
+
+  /* IDENTITY */
+
+  body("id_type")
+    .optional()
+    .trim()
+    .isString(),
+
+  body("id_number")
+    .optional()
+    .trim()
+    .isString(),
+
+  /* CURRENT ADDRESS */
+
+  body("current_address")
+    .optional()
+    .isString(),
+
+  body("current_landmark")
+    .optional()
+    .isString(),
+
+  body("current_residency")
+    .optional()
+    .isString(),
+
+  body("current_duration")
+    .optional()
+    .isString(),
+
+  /* PERMANENT ADDRESS */
+
+  body("permanent_address")
+    .optional()
+    .isString(),
+
+  body("permanent_landmark")
+    .optional()
+    .isString(),
+
+  body("permanent_residency")
+    .optional()
+    .isString(),
+
+  body("permanent_duration")
+    .optional()
+    .isString(),
+
+  /* CRIMINAL CHECK */
+
+  body("father_name")
+    .optional()
+    .isString(),
+
+  body("mother_name")
+    .optional()
+    .isString(),
+
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE", "OTHER"])
+    .withMessage("Invalid gender"),
+
+  body("dob")
+    .optional()
+    .isDate()
+    .withMessage("Invalid date format"),
+
+  
+  /* EDUCATION */
+
+  body("institute_name")
+    .optional()
+    .isString(),
+
+  body("university")
+    .optional()
+    .isString(),
+
+  body("education_start")
+    .optional()
+    .isDate(),
+
+  body("education_end")
+    .optional()
+    .isDate(),
+
+  body("roll_number")
+    .optional({ checkFalsy: true })
+    .isString(),
+
+  body("qualification")
+    .optional({ checkFalsy: true })
+    .isString(),
+
+  body("specialization")
+    .optional({ checkFalsy: true })
+    .isString(),
+
+  body("passing_year")
+    .optional()
+    .isInt({ min: 1900, max: 2100 })
+    .withMessage("Invalid passing year"),
+  /* STATUS */
+
+  body("status")
+    .optional({ checkFalsy: true })
+    .isIn(["NEW", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED"])
+    .withMessage("Invalid status"),
+
+  body("priority")
+    .optional({ checkFalsy: true })
+    .isIn(["LOW", "MEDIUM", "HIGH"])
+    .withMessage("Invalid priority"),
+
+  /* USERS */
+
+  body("assignedTo")
+    .optional({ checkFalsy: true })
+    .isUUID()
+    .withMessage("assignedTo must be UUID"),
+
+  body("slaDueDate")
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage("Invalid SLA date"),
+  // body("service")
+  //   .isArray({ min: 1 })
+  //   .withMessage("Service must be a non-empty array"),
+
+  // body("service.*")
+  //   .isUUID()
+  //   .withMessage("service must be UUID"),
+  // body("assignedTo")
+  //   .notEmpty()
+  //   .withMessage("assignedTo is required")
+  //   .isString()
+  //   .withMessage("assignedTo must be a string"),
+
+  //bgv employeement ----
+
+  body("bgvEmployments")
+    .optional({ checkFalsy: true })
+    .isArray()
+    .withMessage("Employment must be an array"),
+
+  body("bgvEmployments.*.company_name")
+    .notEmpty()
+    .withMessage("Company name is required"),
+
+  body("bgvEmployments.*.employee_id")
+    .notEmpty()
+    .withMessage("Employee ID is required"),
+
+  body("bgvEmployments.*.employment_start")
+    .optional({ checkFalsy: true })
+    .isDate()
+    .withMessage("Invalid employment start date"),
+
+  body("bgvEmployments.*.employment_end")
+    .optional({ checkFalsy: true })
+    .isDate()
+    .withMessage("Invalid employment end date"),
+
+  body("bgvEmployments.*.isCurrent")
+    .optional({ checkFalsy: true })
+    .isBoolean()
+    .withMessage("isCurrent must be boolean"),
+
+  body("bgvEmployments.*.job_title")
+    .notEmpty({ checkFalsy: true })
+    .withMessage('Job title must be required'),
+
+  body("bgvEmployments.*.leaving_reason")
+    .optional({ checkFalsy: true })
+    .trim(),
+
+];
+
+router.post('/user/form/apply',uploadAny(),bgvReqApplyValidation,bgvRequestController.bgvUserApplyForm);
 
 module.exports = router;

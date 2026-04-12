@@ -332,18 +332,22 @@ module.exports = {
 
             let clientService = await ClientService.findAll({
                 where:{
-                    clientId:client_id
+                    clientId:client_id,
+                    isActive:true,
                 },
                 include:[
                     {
                         model:Client,
-                        as:"client"
+                        as:"client",
+                        required:true
                     },
                     {
                         model:Service,
-                        as:"service"
+                        as:"service",
+                        required:true
                     }
-                ]
+                ],
+                order: [[{ model: Service, as: "service" }, "name", "ASC"]],
                 
             });
             return res.status(ResponseCodes.SUCCESS).json({
@@ -362,6 +366,68 @@ module.exports = {
                 message: 'Server error'
             });
         }
+   },
+    /*
+    * @route GET /api/v1/mysdom/client/service/delete
+    * @desc Get new client
+    * @authentication  true [admin]
+    */
+   deleteClientService: async(req,res)=>{
+    try{
+        let {clientserv_id} = req.body;
+        if(!clientserv_id){
+            return res.status(ResponseCodes.BAD_REQUEST).json({
+                status:ResponseCodes.BAD_REQUEST,
+                data:{},
+                error:{message:"clientserv_id required"},
+                message:"clientserv_id  required"
+            })
+        }
+        let checkClientService = await ClientService.findOne({
+            where:{
+                id:clientserv_id
+            },
+            raw:true
+        });
+        if(!checkClientService){
+            return res.status(ResponseCodes.NOT_FOUND).json({
+                status:ResponseCodes.NOT_FOUND,
+                data:{},
+                error:{message:"Client service not found! check clientserv_id"},
+                message:"Client service not found"
+            })
+        }
+        let deleteClienService = await ClientService.destroy({
+            where:{
+                id:clientserv_id
+            }
+        });
+        let deleteClientService = await ClientService.findOne({
+            where:{
+                id:clientserv_id,
+                deletedAt:{[Op.ne]:null}
+            },
+            raw:true
+        });
+        return res.status(ResponseCodes.SUCCESS).json({
+            status:ResponseCodes.SUCCESS,
+            data:deleteClienService,
+            error:{},
+            message:'Client deleted successfully'
+        })
+
+
+    }catch(error){
+        console.error('Error in update Client Service List:', error);
+        return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+            status: ResponseCodes.INTERNAL_SERVER_ERROR,
+            data: {},
+            error: error.message,
+            message: 'Server error'
+        });
+    }
+    
    }
+
 
 }

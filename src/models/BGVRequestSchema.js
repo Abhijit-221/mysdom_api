@@ -313,4 +313,26 @@ BGVRequest.beforeValidate((instance) => {
     instance.req_code = `MYS-TRL-BBS-${ts}${rand}`;
   }
 });
+
+
+BGVRequest.beforeCreate(async (instance) => {
+  // Fetch client name using clientId
+  const client = await Client.findOne({
+    where: { id: instance.clientId },
+    attributes: ['companyName'], // fetch only what you need
+    raw:true
+  });
+
+  console.log("client:",client);
+
+  // Get first 3 chars of client name, uppercase, fallback to 'CLT' if not found
+  const clientPrefix = client?.companyName
+    ? client.companyName.trim().toUpperCase().replace(/\s+/g, '').slice(0, 3)
+    : 'CLT';
+
+  const ts = Date.now().toString().slice(-6);
+  const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+
+  instance.req_code = `MYS-${clientPrefix}-BBS-${ts}${rand}`;
+});
 module.exports = BGVRequest;

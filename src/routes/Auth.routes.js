@@ -101,5 +101,7 @@ Authrouter.post('/user-update', auth,authorize('superadmin','admin','user'), upl
 Authrouter.get('/user-list', auth,authorize('superadmin','admin','user'),authController.getAllUsers);
 Authrouter.get('/user/get/:id', auth,authorize('superadmin','admin','user'),authController.getUserDetails);
 Authrouter.get('/users/get', auth,authorize('superadmin','admin','user'),authController.getUsers);
+Authrouter.get('/users/get-admin',authController.getSuperAdmin);
+
 
 module.exports = Authrouter;

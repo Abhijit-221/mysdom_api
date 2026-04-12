@@ -144,6 +144,9 @@ router.get('/get',
 router.get('/ext-list',
     ServiceController.getServiceListForExt
 );
-// router.delete('/delete/:id', auth, authorize('admin','superadmin'), ServiceController.deleteService);
+const deleteValidate = [
+    body('id').trim().notEmpty().withMessage('Service id is required'),
+]
+router.post('/delete', auth, authorize('admin','superadmin'),deleteValidate,ServiceController.deleteService);
 
 module.exports = router;

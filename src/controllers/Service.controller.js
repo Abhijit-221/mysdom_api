@@ -305,7 +305,8 @@ module.exports = {
             let services = await Service.findAll({
                 where: {
                     isActive: true
-                }
+                },
+                order:[['name','ASC']]
             });
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
@@ -315,6 +316,64 @@ module.exports = {
             })
         }
         catch (error) {
+            console.log('Internal server error:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    },
+    /*
+    * @route GET /api/v1/mysdom/services/
+    * @desc GET a service
+    * @authentication  true [admin]
+    */
+    deleteService: async(req,res)=>{
+        console.log('deleteServices API...');
+        try{
+            let {id} = req.body;
+           const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let checkService = await Service.findOne({
+                where:{
+                    id:id,
+                },
+                raw:true
+            });
+            if(!checkService){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:{message:"Service not found. check id"},
+                    message:"Service not found"
+                })
+            }
+            const deleteService = await Service.destroy({
+                where:{
+                    id:id
+                }
+            });
+            const deletedService = await Service.findOne({
+                where:{id:id}
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:deleteService,
+                error:{},
+                message:"Service deleted successfully."
+            })
+
+        }
+        catch(error){
             console.log('Internal server error:', error);
             return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
                 status: ResponseCodes.INTERNAL_SERVER_ERROR,

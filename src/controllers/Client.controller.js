@@ -303,6 +303,118 @@ module.exports = {
             });
         }
     },
+     /*
+    * @route GET /api/v1/mysdom/client/users
+    * @desc Get new client
+    * @authentication  true [admin]
+    */
+    getClientUser: async(req,res)=>{
+        console.log('getClientUser api..');
+        try{
+            let {clientid} = req.query;
+            if(!clientid){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:{message:"clientid required"},
+                    message:"clientid required"
+                })
+            }
+            let getUsers = await User.findAll({
+                where:{
+                    client:clientid,
+                },
+                include:[
+                    {
+                        model:Client,
+                        as:'clients'
+                    }
+                ],
+                order:[['username','asc']],
+                raw:true
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:getUsers,
+                error:{},
+                message:"User fetched successfully"
+            })
+
+        }
+        catch(error){
+             console.error('Error in Get All Clients:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    },
+     /*
+    * @route GET /api/v1/mysdom/client/user/delete
+    * @desc Get new client
+    * @authentication  true [admin]
+    */
+    deleteClient:async(req,res)=>{
+        console.log("delete client api...");
+        try{
+            const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let {id}=req.body;
+            let client = await Client.findOne({
+                where:{
+                    id:id
+                },
+                raw:true
+            });
+            if(!client){
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status:ResponseCodes.NOT_FOUND,
+                    data:{},
+                    error:{
+                        message:"Client not found check id."
+                    },
+                    message:"Clien not found"
+                })
+            }
+            let deleteClient = await Client.destroy({
+                where:{
+                    id:id
+                }
+            });
+            let deletedClient = await Client.findOne({
+                where:{
+                    id:id,
+                    deletedAt:{[Op.ne]:null}
+                },
+                raw:true
+            });
+            return res.status(ResponseCodes.SUCCESS).json({
+                status:ResponseCodes.SUCCESS,
+                data:deleteClient,
+                error:{},
+                message:"Client delete successfull."
+            })
+
+        }
+        catch(error){
+             console.error('Error in Get All Clients:', error);
+            return res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+                status: ResponseCodes.INTERNAL_SERVER_ERROR,
+                data: {},
+                error: error.message,
+                message: 'Server error'
+            });
+        }
+    }
 
 
 
