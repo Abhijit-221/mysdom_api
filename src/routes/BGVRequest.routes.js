@@ -610,7 +610,7 @@ router.get('/batchupload/service-get',
   bgvRequestController.getBathUploadService
 )
 
-router.get('/form-link/generate',
+router.get('/formlink',
   auth,
   authorize('user'),
   bgvRequestController.generateFormLink
