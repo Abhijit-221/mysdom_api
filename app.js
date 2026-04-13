@@ -31,9 +31,6 @@ const serviceRoutes = require('./src/routes/Service.routes');
 const clientServiceRoutes = require('./src/routes/ClientService.routes');
 const bgvRequestRoutes = require('./src/routes/BGVRequest.routes');
 const mailRoutes = require('./src/routes/mail.routes');
-const auth = require('./src/middleware/auth');
-const { authorize } = require('./src/middleware/roleMiddleware');
-const formLink = require('./src/controllers/BGVRequest.controller').generateFormLink;
 // Use routes
 app.use('/api/v1/mysdom/auth', authRoutes);
 app.use('/api/v1/mysdom/client', clientRoutes);
@@ -41,7 +38,6 @@ app.use('/api/v1/mysdom/service', serviceRoutes);
 app.use('/api/v1/mysdom/client-service',clientServiceRoutes);
 app.use('/api/v1/mysdom/bgvrequest', bgvRequestRoutes);
 app.use('/api/v1/mysdom/mail', mailRoutes);
-app.use('/api/v1/mysdom/formlink',auth,authorize('user'),formLink);
 
 app.use((err, req, res, next) => {
   console.error(err);

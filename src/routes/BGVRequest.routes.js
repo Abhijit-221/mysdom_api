@@ -610,11 +610,11 @@ router.get('/batchupload/service-get',
   bgvRequestController.getBathUploadService
 )
 
-// router.post('/formlink',
-//   auth,
-//   authorize('user'),
-//   bgvRequestController.generateFormLink
-// )
+router.post('/formlink',
+  auth,
+  authorize('user'),
+  bgvRequestController.generateFormLink
+)
 
 router.get('/token/verify/:token',
   bgvRequestController.verifyToken
