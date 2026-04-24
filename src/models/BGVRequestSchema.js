@@ -95,6 +95,15 @@ const BGVRequest = sequelize.define('bgv_request', {
     required: true,
     allowNull: true
   },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  dob: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
   designation: {
     type: DataTypes.STRING,
     allowNull: true
@@ -173,14 +182,12 @@ const BGVRequest = sequelize.define('bgv_request', {
     type: DataTypes.STRING,
     allowNull: true
   },
-
-  gender: {
+  address_detail:{
     type: DataTypes.STRING,
     allowNull: true
   },
-
-  dob: {
-    type: DataTypes.DATEONLY,
+  city:{
+    type: DataTypes.STRING,
     allowNull: true
   },
 
@@ -260,11 +267,33 @@ const BGVRequest = sequelize.define('bgv_request', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  degree_status:{//yes/no
+    type: DataTypes.ENUM('yes','no'),
+    allowNull: true
+  },
   edu_doc: {
     type: DataTypes.STRING,
     allowNull: true
   },
-
+  /* ---------------- CREDIT CHECK ---------------- */
+  pan_card:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  /* ---------------- SOCIAL MEDIA CHECK ---------------- */
+  social_media_type:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  social_media_id:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  nick_name:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  
   status: {
     type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
     // enum: ['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CLOSED'],
@@ -285,6 +314,10 @@ const BGVRequest = sequelize.define('bgv_request', {
       model: User,
       key: 'id'
     }
+  },
+  acknowladge:{
+    type:DataTypes.BOOLEAN,
+    allowNull:true
   },
 
   updatedBy: {

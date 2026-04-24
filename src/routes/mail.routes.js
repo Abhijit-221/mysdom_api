@@ -1,5 +1,6 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
+const { ResponseCodes } = require("../utils/constant");
 const router = express.Router();
 // ── Middleware ──────────────────────────────────────────────
 
@@ -66,5 +67,97 @@ router.post("/send", async (req, res) => {
         return res.status(500).json({ success: false, error: "Failed to send email. Please try again." });
     }
 });
+
+
+// POST /send-mail
+router.post('/send-formlink', async (req, res) => {
+  try {
+    const { emails, formLink } = req.body;
+
+    if (!emails || !emails.length) {
+      return res.status(400).json({ message: 'Email required' });
+    }
+
+    // Configure transporter (Gmail example)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,   // your email
+        pass: process.env.GMAIL_PASS    // app password
+      }
+    });
+
+    // HTML Template
+    const htmlTemplate = `
+      <div style="font-family: Arial, sans-serif; background:#f4f4f4; padding:20px;">
+        <div style="max-width:600px; margin:auto; background:#ffffff; padding:20px; border-radius:8px;">
+          
+          <h2 style="color:#333;">Hello 👋</h2>
+          
+          <p style="font-size:14px; color:#555;">
+            You have received a request to fill out the form. Please click the button below to proceed.
+          </p>
+
+          <div style="text-align:center; margin:30px 0;">
+            <a href="${formLink}" 
+               style="background:#007bff; color:#fff; padding:12px 20px; text-decoration:none; border-radius:5px; display:inline-block;">
+              Open Form
+            </a>
+          </div>
+
+          <p style="font-size:12px; color:#888;">
+            If the button doesn't work, use this link:<br/>
+            <a href="${formLink}">${formLink}</a>
+          </p>
+
+          <hr style="margin:30px 0;" />
+
+          <!-- Footer -->
+          <div style="text-align:center;">
+            <img 
+              src="http://localhost:5173/logo.png" 
+              alt="Company Logo" 
+              style="width:120px; margin-bottom:10px;"
+            />
+            <p style="font-size:12px; color:#999;">
+              © ${new Date().getFullYear()} Your Company. All rights reserved.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    // Mail Options
+    const mailOptions = {
+      from: `"MYSDOM" <${process.env.EMAIL_USER}>`,
+      to: emails, // array of emails
+      subject:'Form Submission Request',
+      html: htmlTemplate
+    };
+
+    // Send Mail
+    const info = await transporter.sendMail(mailOptions);
+
+    res.status(ResponseCodes.SUCCESS).json({
+      status:ResponseCodes.SUCCESS,
+      error:{},
+      data:{
+          messageId: info.messageId
+      },
+      message: 'Emails sent successfully',
+    });
+
+  } catch (error) {
+    console.error('Mail Error:', error);
+    res.status(ResponseCodes.INTERNAL_SERVER_ERROR).json({
+        status:ResponseCodes.INTERNAL_SERVER_ERROR,
+        data:{},
+        error:error,
+        message: 'Failed to send emails' 
+    });
+  }
+});
+
 
 module.exports = router;

@@ -51,6 +51,14 @@ const BGVEmployment = sequelize.define("bgv_request_employments", {
     type: DataTypes.STRING,
     allowNull:true
   },
+  employment_category:{//Paid/ Unpaid
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  employment_type:{//Full time / Part time
+    type: DataTypes.STRING,
+    allowNull: true
+  },
 
   job_doc: {
     type: DataTypes.STRING,

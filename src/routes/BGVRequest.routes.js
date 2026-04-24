@@ -79,14 +79,14 @@ let updateBGVStatusValidation = [
     .withMessage("BGV request ID is required")
     .isString()
     .withMessage("BGV request ID must be a string"),
-  body("service_id")
+  body("product_id")
     .notEmpty()
-    .withMessage("service ID is required")
+    .withMessage("product ID is required")
     .isString()
-    .withMessage("service ID must be a string"),
+    .withMessage("product ID must be a string"),
   body("status")
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'])
+    .isIn(['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED', 'CLOSED'])
     .withMessage("status must be NEW, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED or CLOSED"),
 ]
 
@@ -119,6 +119,17 @@ const createBgvRequestValidator = [
     .withMessage("Phone number is required")
     .isMobilePhone("en-IN")
     .withMessage("Invalid phone number"),
+
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE", "OTHER"])
+    .withMessage("Invalid gender"),
+
+  body("dob")
+    .optional()
+    .isDate()
+    .withMessage("Invalid date format"),
+
 
   body("designation")
     .optional()
@@ -185,18 +196,13 @@ const createBgvRequestValidator = [
   body("mother_name")
     .optional()
     .isString(),
-
-  body("gender")
+  body("address_detail")
     .optional()
-    .isIn(["MALE", "FEMALE", "OTHER"])
-    .withMessage("Invalid gender"),
-
-  body("dob")
+    .isString(),
+  body('city')
     .optional()
-    .isDate()
-    .withMessage("Invalid date format"),
+    .isString(),
 
-  
   /* EDUCATION */
 
   body("institute_name")
@@ -231,6 +237,10 @@ const createBgvRequestValidator = [
     .optional()
     .isInt({ min: 1900, max: 2100 })
     .withMessage("Invalid passing year"),
+  body("degree_status")
+    .optional()
+    .isIn(["yes", "no"])
+    .withMessage("degree_status must be yes or no"),
   /* STATUS */
 
   body("status")
@@ -242,7 +252,20 @@ const createBgvRequestValidator = [
     .optional({ checkFalsy: true })
     .isIn(["LOW", "MEDIUM", "HIGH"])
     .withMessage("Invalid priority"),
-
+  /**CREDIT CHECK */
+  body("pan_card")
+    .optional({ checkFalsy: true })
+    .isString(),
+  /**SOCIAL MEDIA */
+  body("social_media_type")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("social_media_id")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("nick_name")
+    .optional({ checkFalsy: true })
+    .isString(),
   /* USERS */
 
   body("assignedTo")
@@ -254,13 +277,16 @@ const createBgvRequestValidator = [
     .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage("Invalid SLA date"),
-  body("service")
+  body("products")
     .isArray({ min: 1 })
-    .withMessage("Service must be a non-empty array"),
+    .withMessage("Products must be a non-empty array"),
 
-  body("service.*")
+  body("products.*")
     .isUUID()
-    .withMessage("service must be UUID"),
+    .withMessage("Products must be UUID"),
+  // body("service.*")
+  //   .isUUID()
+  //   .withMessage("service must be UUID"),
   // body("assignedTo")
   //   .notEmpty()
   //   .withMessage("assignedTo is required")
@@ -304,6 +330,19 @@ const createBgvRequestValidator = [
   body("bgvEmployments.*.leaving_reason")
     .optional({ checkFalsy: true })
     .trim(),
+  body("bgvEmployments.*.employment_category")
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage("Invalid employment category"),
+  body("bgvEmployments.*.employment_type")
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage("Invalid employment type"),
+  body("acknowladge")
+  .notEmpty().withMessage("acknowladge is required")
+  .toBoolean() // ✅ converts "true"/"false" → true/false
+  .isBoolean()
+  .withMessage("acknowladge must be boolean")
 
 ];
 
@@ -325,7 +364,7 @@ const bgvServiceStatusDocs = [
 router.put('/status/update',
   auth, authorize('admin', 'superadmin'),
   uploadFields(bgvServiceStatusDocs),
-  updateBGVStatusValidation, 
+  updateBGVStatusValidation,
   bgvRequestController.updateRequestStatus
 );
 
@@ -482,7 +521,7 @@ const updateBGVRequestValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isInt({ min: 1900, max: 2100 })
     .withMessage("Invalid passing year"),
-  
+
   body("priority")
     .if((value) => value)
     .toUpperCase()
@@ -526,7 +565,7 @@ const updateBGVRequestValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isUUID()
     .withMessage("service must be UUID"),
- 
+
   //bgv employeement ----
 
   body("bgvEmployments")
@@ -593,26 +632,36 @@ const updateBGVRequestValidation = [
 
 ];
 router.put('/update',
-   auth,
-   authorize('admin', 'user'), 
-   uploadAny(),parseJSONFields(["bgvEmployments","removeEmployments","addservice","removeService"]), 
-   updateBGVRequestValidation, 
-   bgvRequestController.updateBGVRequest
-  );
+  auth,
+  authorize('admin', 'user'),
+  uploadAny(), parseJSONFields(["bgvEmployments", "removeEmployments", "addservice", "removeService"]),
+  updateBGVRequestValidation,
+  bgvRequestController.updateBGVRequest
+);
 router.post('/batchupload/service-add',
   auth,
-  authorize('admin','superadmin'),
-  bgvRequestController.createBatchUploadService 
+  authorize('admin', 'superadmin'),
+  bgvRequestController.createBatchUploadService
 );
 router.get('/batchupload/service-get',
   auth,
-  authorize('user','admin','superadmin'),
+  authorize('user', 'admin', 'superadmin'),
   bgvRequestController.getBathUploadService
 )
 
+const validateForm = [
+  body("products")
+    .isArray({ min: 1 })
+    .withMessage("Products must be a non-empty array"),
+
+  body("products.*")
+    .isUUID()
+    .withMessage("Products must be UUID"),
+]
 router.post('/formlink',
   auth,
   authorize('user'),
+  validateForm,
   bgvRequestController.generateFormLink
 )
 
@@ -622,7 +671,6 @@ router.get('/token/verify/:token',
 
 
 const bgvReqApplyValidation = [
-
   /* CLIENT */
 
   body("clientId")
@@ -650,6 +698,15 @@ const bgvReqApplyValidation = [
     .withMessage("Phone number is required")
     .isMobilePhone("en-IN")
     .withMessage("Invalid phone number"),
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE", "OTHER"])
+    .withMessage("Invalid gender"),
+
+  body("dob")
+    .optional()
+    .isDate()
+    .withMessage("Invalid date format"),
 
   body("designation")
     .optional()
@@ -717,17 +774,13 @@ const bgvReqApplyValidation = [
     .optional()
     .isString(),
 
-  body("gender")
+  body("address_detail")
     .optional()
-    .isIn(["MALE", "FEMALE", "OTHER"])
-    .withMessage("Invalid gender"),
-
-  body("dob")
+    .isString(),
+  body('city')
     .optional()
-    .isDate()
-    .withMessage("Invalid date format"),
+    .isString(),
 
-  
   /* EDUCATION */
 
   body("institute_name")
@@ -762,6 +815,10 @@ const bgvReqApplyValidation = [
     .optional()
     .isInt({ min: 1900, max: 2100 })
     .withMessage("Invalid passing year"),
+  body("degree_status")
+    .optional()
+    .isIn(["yes", "no"])
+    .withMessage("degree_status must be yes or no"),
   /* STATUS */
 
   body("status")
@@ -774,6 +831,20 @@ const bgvReqApplyValidation = [
     .isIn(["LOW", "MEDIUM", "HIGH"])
     .withMessage("Invalid priority"),
 
+  /**CREDIT CHECK */
+  body("pan_card")
+    .optional({ checkFalsy: true })
+    .isString(),
+  /**SOCIAL MEDIA */
+  body("social_media_type")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("social_media_id")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("nick_name")
+    .optional({ checkFalsy: true })
+    .isString(),
   /* USERS */
 
   body("assignedTo")
@@ -785,18 +856,27 @@ const bgvReqApplyValidation = [
     .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage("Invalid SLA date"),
-  // body("service")
-  //   .isArray({ min: 1 })
-  //   .withMessage("Service must be a non-empty array"),
 
-  // body("service.*")
-  //   .isUUID()
-  //   .withMessage("service must be UUID"),
-  // body("assignedTo")
-  //   .notEmpty()
-  //   .withMessage("assignedTo is required")
-  //   .isString()
-  //   .withMessage("assignedTo must be a string"),
+  //social media check
+  body("social_media_type")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("social_media_id")
+    .optional({ checkFalsy: true })
+    .isString(),
+  body("nick_name")
+    .optional({ checkFalsy: true })
+    .isString(),
+
+  //products
+  body("products")
+    .isArray({ min: 1 })
+    .withMessage("Products must be a non-empty array"),
+
+  body("products.*")
+    .isUUID()
+    .withMessage("Products must be UUID"),
+
 
   //bgv employeement ----
 
@@ -835,9 +915,21 @@ const bgvReqApplyValidation = [
   body("bgvEmployments.*.leaving_reason")
     .optional({ checkFalsy: true })
     .trim(),
-
+  body("bgvEmployments.*.employment_category")
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage("Invalid employment category"),
+  body("bgvEmployments.*.employment_type")
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage("Invalid employment type"),
+  body("acknowladge")
+  .notEmpty().withMessage("acknowladge is required")
+  .toBoolean() // ✅ converts "true"/"false" → true/false
+  .isBoolean()
+  .withMessage("acknowladge must be boolean")
 ];
 
-router.post('/user/form/apply',uploadAny(),bgvReqApplyValidation,bgvRequestController.bgvUserApplyForm);
+router.post('/user/form/apply', uploadAny(), bgvReqApplyValidation, bgvRequestController.bgvUserApplyForm);
 
 module.exports = router;

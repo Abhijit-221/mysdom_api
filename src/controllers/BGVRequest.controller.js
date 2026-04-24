@@ -18,6 +18,8 @@ const ClientBatchUploadDocs = require("../models/ClientBatchUploadSchema");
 const { raw } = require("express");
 const BatchUploadService = require("../models/BGVBatchUploadServiceSchema");
 const jwt = require('jsonwebtoken');
+const Product = require("../models/ProductSchema");
+const BGVRequestProduct = require("../models/BGVProductSchema");
 
 
 // const fs = require('fs/promises');
@@ -37,6 +39,7 @@ const deleteUploadedFiles = async (files) => {
         }
     }
 };
+
 module.exports = {
     /*
     * @route POST /api/v1/mysdom/BGVRequest/create
@@ -653,12 +656,12 @@ module.exports = {
                         as: 'employments'
                     },
                     {
-                        model: BGVRequestService,
-                        as: 'bgvReqestService',
+                        model: BGVRequestProduct,
+                        as: 'BGVRequestProducts',
                         // required: true,
                         include: [{
-                            model: Service,
-                            as: 'services',
+                            model: Product,
+                            as: 'Product',
                             // required: true
                         }]
                     }
@@ -681,12 +684,12 @@ module.exports = {
                         as: 'employments'
                     },
                     {
-                        model: BGVRequestService,
-                        as: 'bgvReqestService',
+                        model: BGVRequestProduct,
+                        as: 'BGVRequestProducts',
                         // required: true,
                         include: [{
-                            model: Service,
-                            as: 'services',
+                            model: Product,
+                            as: 'Product',
                             // required: true
                         }]
                     }
@@ -734,12 +737,19 @@ module.exports = {
                     message: 'Validation failed'
                 });
             }
-            let { request_id, service_id, remark, status } = req.body;
+            let { request_id,
+                    product_id,
+                    remark, 
+                    status,
+                    mode_of_verification,
+                    verifier_comment,
+                    final_desc
+                } = req.body;
             //let check request
-            let bgvRequest = await BGVRequestService.findOne({
+            let bgvRequest = await BGVRequestProduct.findOne({
                 where: {
                     requestId: request_id,
-                    serviceId: service_id
+                    productId: product_id
                 },
                 raw: true
             });
@@ -750,13 +760,16 @@ module.exports = {
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
-                    error: "BGV request service not found",
-                    error: "BGV request service not found"
+                    error: "BGV request product not found",
+                    error: "BGV request product not found"
                 })
             }
             const updateData = {
                 status: status || bgvRequest.status,
                 remark: remark || bgvRequest.remark,
+                mode_of_verification:mode_of_verification||bgvRequest.mode_of_verification,
+                verifier_comment:verifier_comment||bgvRequest.verifier_comment,
+                final_desc:final_desc||bgvRequest.final_desc,
                 updatedBy: req.user.id
             };
             if (req.files && Object.keys(req.files).length > 0) {
@@ -776,15 +789,15 @@ module.exports = {
             if (updateData.doc_2 && bgvRequest.doc_2 && fs.existsSync(bgvRequest.doc_2)) {
                 await fs.unlinkSync(bgvRequest.doc_2);
             }
-            let updateBGV = await BGVRequestService.update(updateData, {
+            let updateBGV = await BGVRequestProduct.update(updateData, {
                 where: {
                     requestId: request_id,
-                    serviceId: service_id
+                    productId: product_id
                 }
             });
-            let getReqServices = await BGVRequestService.findAll({
+            let getReqServices = await BGVRequestProduct.findAll({
                 where: {
-                    requestId: request_id
+                    requestId: request_id,
                 },
                 raw: true
             });
@@ -815,10 +828,10 @@ module.exports = {
                     where: { id: request_id }
                 }
             );
-            let getUpdatedBgv = await BGVRequestService.findOne({
+            let getUpdatedBgv = await BGVRequestProduct.findOne({
                 where: {
                     requestId: request_id,
-                    serviceId: service_id
+                    productId: product_id
                 },
                 raw: true
             });
@@ -830,7 +843,7 @@ module.exports = {
             });
         }
         catch (error) {
-            console.log('Error in Get Services of BGV Request:', error);
+            console.log('Error in Get product of BGV Request:', error);
             if (req.files) {
                 await deleteUploadedFiles(req.files);
             }
@@ -912,21 +925,53 @@ module.exports = {
             }
 
             console.log(inputData);
-            //let get service with ths client exist 
-            let serviceError = []
-            for (const serviceid of inputData.service) {
 
-                let clientService = await ClientService.findOne({
+            //let get service with ths client exist -----------
+            // let serviceError = []
+            // for (const serviceid of inputData.service) {
+
+            //     let clientService = await ClientService.findOne({
+            //         where: {
+            //             clientId: client.id,
+            //             serviceId: serviceid
+            //         },
+            //     });
+            //     if (!clientService) {
+            //         serviceError.push(serviceid);
+            //     }
+            // };
+
+
+            // if (serviceError.length) {
+            //     if (req.files && req.files.length) {
+            //         req.files.forEach(file => {
+            //             fs.unlink(file.path, () => { });
+            //         });
+            //     }
+            //     return res.status(ResponseCodes.NOT_FOUND).json({
+
+            //         status: ResponseCodes.NOT_FOUND,
+            //         data: [],
+            //         error: `Client with these services not found,${serviceError}`,
+            //         message: `Client with these services not found`,
+
+            //     })
+            // }
+
+            //let check products
+            let productErrors = [];
+            for (let productid of inputData.products) {
+                let product = await Product.findOne({
                     where: {
-                        clientId: client.id,
-                        serviceId: serviceid
+                        id: productid
                     },
+                    raw: true
                 });
-                if (!clientService) {
-                    serviceError.push(serviceid);
+                if (!product) {
+                    productErrors.push(productid);
                 }
-            };
-            if (serviceError.length) {
+            }
+            if (productErrors.length) {
                 if (req.files && req.files.length) {
                     req.files.forEach(file => {
                         fs.unlink(file.path, () => { });
@@ -936,11 +981,13 @@ module.exports = {
 
                     status: ResponseCodes.NOT_FOUND,
                     data: [],
-                    error: `Client with these services not found,${serviceError}`,
-                    message: `Client with these services not found`,
+                    error: `Products not found,${serviceError}`,
+                    message: `Some products not found`,
 
                 })
             }
+
+
             inputData.submittedBy = req.user.id;
             if (req.files && req.files.length) {
 
@@ -998,9 +1045,20 @@ module.exports = {
 
             // inputData.req_code = `MYS-TRL-BBS-${paddedNumber}`;
             console.log("inputData:", inputData);
+            inputData.acknowledge = (inputData.acknowledge==="true" || inputData.acknowledge===true)?true:false;
             let createTransaction = await sequelize.transaction(async (t) => {
 
                 let createBgvRequest = await BGVRequest.create(inputData, { transaction: t });
+                //let create bgv products
+                let requestProduct = inputData.products.map((productid) => {
+                    return {
+                        requestId: createBgvRequest.id,
+                        productId: productid,
+                        createdBy: req.user.id,
+                        updatedBy: req.user.id
+                    }
+                });
+                let createBgvProduct = await BGVRequestProduct.bulkCreate(requestProduct, { transaction: t })
                 if (inputData.bgvEmployments && inputData.bgvEmployments.length) {
                     let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
                         const cleanedData = Object.fromEntries(
@@ -1016,16 +1074,16 @@ module.exports = {
                     });
                     let createEmployeeDetails = await BGVEmployment.bulkCreate(employeeDetailsData, { transaction: t });
                 }
-                let reqService = inputData.service.map((serviceid) => {
-                    return {
-                        requestId: createBgvRequest.id,
-                        serviceId: serviceid,
-                        createdBy: req.user.id,
-                        updatedBy: req.user.id
-                    }
-                });
+                // let reqService = inputData.service.map((serviceid) => {
+                //     return {
+                //         requestId: createBgvRequest.id,
+                //         serviceId: serviceid,
+                //         createdBy: req.user.id,
+                //         updatedBy: req.user.id
+                //     }
+                // });
 
-                let createServices = await BGVRequestService.bulkCreate(reqService, { transaction: t });
+                // let createServices = await BGVRequestService.bulkCreate(reqService, { transaction: t });
                 return createBgvRequest;
             })
 
@@ -1063,7 +1121,7 @@ module.exports = {
             let { request_id } = req.params;
             console.log(request_id);
             let whereClause = {
-                where:{id: request_id}
+                where: { id: request_id }
             };
             // if (req.user.role === 'user') {
             //     let user = await User.findOne({
@@ -1083,19 +1141,19 @@ module.exports = {
                     {
                         model: Client,
                         as: 'client',
-                        required:true
+                        required: true
                     },
                     {
                         model: BGVEmployment,
                         as: 'employments'
                     },
                     {
-                        model: BGVRequestService,
-                        as: 'bgvReqestService',
-                        required: true,
+                        model: BGVRequestProduct,
+                        as: 'BGVRequestProducts',
+                        // required: true,
                         include: [{
-                            model: Service,
-                            as: 'services',
+                            model: Product,
+                            as: 'Product',
                             // required: true
                         }]
                     }
@@ -1145,33 +1203,33 @@ module.exports = {
                     message: "File is required"
                 });
             }
-            let { service_id } = req.body;
-            if (!service_id) {
+            let { product_id } = req.body;
+            if (!product_id) {
                 if (req.file) {
                     fs.unlinkSync(filePath);
                 }
                 return res.status(ResponseCodes.BAD_REQUEST).json({
                     status: ResponseCodes.BAD_REQUEST,
                     data: {},
-                    error: "Service id required",
-                    message: "Service id required"
+                    error: "Product id required",
+                    message: "Product id required"
                 })
             }
-            let getService = await Service.findOne({
+            let getProduct = await Product.findOne({
                 where: {
-                    id: service_id,
+                    id: product_id,
                 },
                 raw: true,
             });
-            if (!getService) {
+            if (!getProduct) {
                 if (req.file) {
                     fs.unlinkSync(filePath);
                 }
                 return res.status(ResponseCodes.NOT_FOUND).json({
                     status: ResponseCodes.NOT_FOUND,
                     data: {},
-                    error: "Service not found, check service_id",
-                    message: 'Service not found'
+                    error: "Product not found, check product_id",
+                    message: 'Product not found'
                 })
             }
             const MAX_RECORDS = 500;
@@ -1375,7 +1433,7 @@ module.exports = {
                     newCandidates.push(record);
                     reqestWithService.push({
                         requestId: record.id,
-                        serviceId: service_id,
+                        productId: product_id,
                         createdBy: req.user.id,
                         updatedBy: req.user.id,
                     })
@@ -1390,8 +1448,12 @@ module.exports = {
                 let transactionData = await sequelize.transaction(async (t) => {
 
                     // ✅ DB Insert (Bulk)
-                    createBgv = await BGVRequest.bulkCreate(newCandidates, { transaction: t });
-                    await BGVRequestService.bulkCreate(reqestWithService, { transaction: t });
+                    createBgv = await BGVRequest.bulkCreate(newCandidates, {
+                        transaction: t,
+                        individualHooks: true,
+                        validate: true
+                    });
+                    await BGVRequestProduct.bulkCreate(reqestWithService, { transaction: t });
                     await ClientBatchUploadDocs.create({
                         client_id: req.user.client,
                         file_path: req.file.path,
@@ -1554,18 +1616,49 @@ module.exports = {
         console.log('generate form link API...');
         try {
             const user = req.user;
+            let { products } = req.body;
+            const validationErrors = validationResult(req);
+            if (!validationErrors.isEmpty()) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    errors: validationErrors.array(),
+                    message: 'Validation failed'
+                });
+            }
+            let getproducts = await Product.findAll({
+                where: {
+                    id: products
+                },
+                // attributes:['id'],
+                raw: true
+            });
+
+            console.log("getproducts:", getproducts);
+            let productIdSet = new Set(getproducts.map(item => item.id));
+            console.log("productIdSet:", productIdSet);
+            let remainingProducts = products.filter(id => !productIdSet.has(id));
+            console.log("remainingProducts:", remainingProducts);
+            if (remainingProducts.length) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: { message: `${remainingProducts} product ids dosnot exist` },
+                    message: "Product not found"
+                })
+            }
             let getSuperAdmin = await User.findOne({
                 where: {
                     role: 'superadmin'
                 },
                 raw: true
             });
-
             const token = await jwt.sign(
                 {
                     clientId: user.client,
                     assignedTo: getSuperAdmin.id,
-                    submittedBy: req.user.id
+                    submittedBy: req.user.id,
+                    products
                 },
                 "SECRET_KEY#$77#",
                 {
@@ -1628,8 +1721,28 @@ module.exports = {
                     error: { message: "Invalid authentication token payload" },
                     message: "Access denied",
                 });
+            } 
+            let getproducts = await Product.findAll({
+                where: {
+                    id: decodedToken.products
+                },
+                attributes:['id','title'],
+                raw: true
+            });
+            console.log("getproducts:", getproducts);
+            let productIdSet = new Set(getproducts.map(item => item.id));
+            console.log("productIdSet:", productIdSet);
+            let remainingProducts = decodedToken.products.filter(id => !productIdSet.has(id));
+            console.log("remainingProducts:", remainingProducts);
+            if (remainingProducts.length) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: { message: `${remainingProducts} product ids dosnot exist` },
+                    message: "Product not found"
+                })
             }
-
+            decodedToken.products = getproducts;
             return res.status(ResponseCodes.SUCCESS).json({
                 status: ResponseCodes.SUCCESS,
                 data: decodedToken,
@@ -1669,7 +1782,7 @@ module.exports = {
         }
     },
 
-    bgvUserApplyForm: async(req,res)=>{
+    bgvUserApplyForm: async (req, res) => {
         console.log('User apply form submit  API...');
         try {
             const validationErrors = validationResult(req);
@@ -1687,7 +1800,7 @@ module.exports = {
                 });
             }
             let inputData = req.body;
-           
+
             let client = await Client.findOne({
                 where: { id: inputData.clientId, isActive: true }, raw: true
             });
@@ -1759,8 +1872,8 @@ module.exports = {
 
             //     })
             // }
-            
-            
+
+
             // inputData.submittedBy = req.user.id;
             if (req.files && req.files.length) {
 
@@ -1798,11 +1911,35 @@ module.exports = {
 
             }
 
-        
+            const { products } = inputData;
+            let getproducts = await Product.findAll({
+                where: {
+                    id: products
+                },
+                // attributes:['id'],
+                raw: true
+            });
+            console.log("getproducts:", getproducts);
+            let productIdSet = new Set(getproducts.map(item => item.id));
+            console.log("productIdSet:", productIdSet);
+            let remainingProducts = products.filter(id => !productIdSet.has(id));
+            console.log("remainingProducts:", remainingProducts);
+            if (remainingProducts.length) {
+                return res.status(ResponseCodes.BAD_REQUEST).json({
+                    status: ResponseCodes.BAD_REQUEST,
+                    data: {},
+                    error: { message: `${remainingProducts} product ids dosnot exist` },
+                    message: "Invalid link"
+                })
+            }
+
             console.log("inputData:", inputData);
+            inputData.acknowladge = (inputData.acknowladge==="true"||inputData.acknowladge===true)?true:false
+            const createData = { ...inputData };
+            delete createData.products;
             let createTransaction = await sequelize.transaction(async (t) => {
 
-                let createBgvRequest = await BGVRequest.create(inputData, { transaction: t });
+                let createBgvRequest = await BGVRequest.create(createData, { transaction: t });
                 if (inputData.bgvEmployments && inputData.bgvEmployments.length) {
                     let employeeDetailsData = inputData.bgvEmployments.map((employeeDetail) => {
                         const cleanedData = Object.fromEntries(
@@ -1817,6 +1954,17 @@ module.exports = {
                         }
                     });
                     let createEmployeeDetails = await BGVEmployment.bulkCreate(employeeDetailsData, { transaction: t });
+                    //let create bgv products
+                    let requestProduct = products.map((productid) => {
+                        return {
+                            requestId: createBgvRequest.id,
+                            productId: productid,
+                            createdBy: inputData.submittedBy,
+                            updatedBy: inputData.submittedBy
+                        }
+                    });
+                    let createBgvProduct = await BGVRequestProduct.bulkCreate(requestProduct, { transaction: t })
+
                 }
                 // let reqService = inputData.service.map((serviceid) => {
                 //     return {

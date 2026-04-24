@@ -155,7 +155,7 @@ module.exports = {
                 where: query,
                 offset: skip,
                 limit: parseInt(limit),
-                order: [['createdAt', 'DESC']],
+                order: [['name', 'ASC']],
                 raw: true
             },
             );
@@ -260,10 +260,10 @@ module.exports = {
         console.log('Get Service By Id API.....');
         try {
             const { id } = req.params;
-            let extracondition = {};
-            if (req.user.role === 'user') {
-                extracondition = { isActive: true }
-            }
+            let extracondition = {isActive: true};
+            // if (req.user.role === 'user') {
+            //     extracondition = { isActive: true }
+            // }
             const service = await Service.findOne({
                 where: {
                     id: id,

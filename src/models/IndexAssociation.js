@@ -1,11 +1,13 @@
 const BatchUploadService = require("./BGVBatchUploadServiceSchema");
 const BGVEmployment = require("./BGVEmployeementSchema");
+const BGVRequestProduct = require("./BGVProductSchema");
 const BGVRequestForm = require("./BGVRequestFormSchema");
 const BGVRequest = require("./BGVRequestSchema");
 const BGVRequestService = require("./BGVRequestServiceSchema");
 const ClientService = require("./ClienServiceSchema");
 const ClientBatchUploadDocs = require("./ClientBatchUploadSchema");
 const Client = require("./ClientSchema");
+const Product = require("./ProductSchema");
 const Service = require("./ServiceSchema");
 const User = require("./UserSchema");
 
@@ -25,6 +27,12 @@ User.hasMany(Service,{as:'services',foreignKey:'createdBy',sourceKey:'id'});
 Service.belongsTo(User,{as:'creator',foreignKey:'createdBy',targetKey:'id'});
 User.hasMany(Service,{as:'updatedServices',foreignKey:'updatedBy',sourceKey:'id'});
 Service.belongsTo(User,{as:'updater',foreignKey:'updatedBy',targetKey:'id'});
+
+//product table
+User.hasMany(Product,{as:'products',foreignKey:'createdBy',sourceKey:'id'});
+Product.belongsTo(User,{as:'creator',foreignKey:'createdBy',targetKey:'id'});
+User.hasMany(Product,{as:'updatedProducts',foreignKey:'updatedBy',sourceKey:'id'});
+Product.belongsTo(User,{as:'updater',foreignKey:'updatedBy',targetKey:'id'});
 
 //Client Service association
 ClientService.belongsTo(Client,{as:'client',foreignKey:'clientId',targetKey:'id'});
@@ -77,6 +85,16 @@ Client.hasMany(ClientBatchUploadDocs,{as:'batchupload_doc',foreignKey:'client_id
 // Batch upload service schema
 BatchUploadService.belongsTo(Service,{as:'service',foreignKey:'service_id',targetKey:'id'});
 Service.hasMany(BatchUploadService,{as:'service',foreignKey:'service_id',targetKey:'id'});
+
+
+//bgv product association 
+BGVRequest.hasMany(BGVRequestProduct,{as:'BGVRequestProducts',foreignKey:'requestId',sourceKey:'id'});
+BGVRequestProduct.belongsTo(BGVRequest,{as:'BgvRequests',foreignKey:'requestId',targetKey:'id'});
+
+Product.hasMany(BGVRequestProduct,{as:'BGVproducts',foreignKey:'productId',sourceKey:'id'});
+BGVRequestProduct.belongsTo(Product,{as:'Product',foreignKey:'productId',targetKey:'id'});
+
+
 
 module.exports = {
     Client,
