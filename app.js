@@ -8,7 +8,9 @@ const { connection } = require('./src/config/db2.config');
 connection();
 const path =  require('path');
 
+app.use(express.urlencoded({ extended: true })); // extended: true enables qs parsing
 app.use(express.json());
+
 const port = process.env.PORT || 3000;
 app.use(cors(
         {

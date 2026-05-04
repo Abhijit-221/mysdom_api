@@ -295,10 +295,10 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
   
   status: {
-    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
+    type: DataTypes.ENUM('SUBMITED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
     // enum: ['NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CLOSED'],
     allowNull: false,
-    defaultValue: 'NEW'
+    defaultValue: 'SUBMITED'
   },
 
   priority: {
@@ -318,6 +318,143 @@ const BGVRequest = sequelize.define('bgv_request', {
   acknowladge:{
     type:DataTypes.BOOLEAN,
     allowNull:true
+  },
+
+  //Verified culomns
+  /*---------verified identity check-------- */
+  verify_id_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+
+  verify_id_number: {
+    type: DataTypes.STRING(45),
+    allowNull: true
+  },
+/* ---------------- CURRENT ADDRESS ---------------- */
+
+  verify_current_address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+
+  verify_current_landmark: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_current_residency: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+
+  verify_current_duration: {
+    type: DataTypes.STRING(30),
+    allowNull: true
+  },
+/* ---------------- PERMANENT ADDRESS ---------------- */
+
+  verify_permanent_address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+
+  verify_permanent_landmark: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_permanent_residency: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+
+  verify_permanent_duration: {
+    type: DataTypes.STRING(30),
+    allowNull: true
+  },
+/* ---------------- CRIMINAL CHECK ---------------- */
+
+  verify_father_name: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_mother_name: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  verify_address_detail:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  verify_city:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  /* ---------------- EDUCATION CHECK ---------------- */
+
+  verify_institute_name: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_university: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_education_start: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+
+  verify_education_end: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+
+  verify_roll_number: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+
+  verify_qualification: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_specialization: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  verify_passing_year: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  verify_degree_status:{//yes/no
+    type: DataTypes.ENUM('yes','no'),
+    allowNull: true
+  },
+
+  /* ---------------- CREDIT CHECK ---------------- */
+  verify_pan_card:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+/* ---------------- SOCIAL MEDIA CHECK ---------------- */
+  verify_social_media_type:{
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  verify_social_media_id:{
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  verify_nick_name:{
+    type: DataTypes.STRING,
+    allowNull: true
   },
 
   updatedBy: {

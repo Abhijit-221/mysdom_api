@@ -63,7 +63,45 @@ const BGVEmployment = sequelize.define("bgv_request_employments", {
   job_doc: {
     type: DataTypes.STRING,
     allowNull:true
-  }
+  },
+  /**verified columns */
+  verify_company_name: {
+    type: DataTypes.STRING,
+    allowNull:true
+  },
+  verify_employee_id: {
+    type: DataTypes.STRING,
+    allowNull:true
+  },
+  verify_employment_start: {
+    type: DataTypes.DATEONLY,
+    allowNull:true
+  },
+  verify_isCurrent:{
+    type: DataTypes.BOOLEAN,
+    allowNull:true,
+    defaultValue:false
+  },
+  verify_employment_end: {
+    type: DataTypes.DATEONLY,
+    allowNull:true
+  },
+  verify_job_title: {
+    type: DataTypes.STRING,
+    allowNull:true
+  },
+  verify_leaving_reason: {
+    type: DataTypes.STRING,
+    allowNull:true
+  },
+  verify_employment_category:{//Paid/ Unpaid
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  verify_employment_type:{//Full time / Part time
+    type: DataTypes.STRING,
+    allowNull: true
+  },
 
 }, {
   timestamps: true,

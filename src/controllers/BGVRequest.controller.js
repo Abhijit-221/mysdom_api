@@ -715,7 +715,7 @@ module.exports = {
     },
 
     /*
-    * @route POST /api/v1/mysdom/BGVRequest/services/get
+    * @route PUT /api/v1/mysdom/BGVRequest/status/update
     * @desc services get BGV request 
     * @authentication  true [admin,user,superadmin]
     */
@@ -743,9 +743,28 @@ module.exports = {
                     status,
                     mode_of_verification,
                     verifier_comment,
-                    final_desc
+                    final_desc,
+                    verification_data
                 } = req.body;
+                console.log('verification_data:', verification_data);
             //let check request
+            let requesrt = await BGVRequest.findOne({
+                where: {
+                    id: request_id
+                },
+                raw: true
+            });
+            if (!requesrt) {
+                if (req.files) {
+                    await deleteUploadedFiles(req.files);
+                }
+                return res.status(ResponseCodes.NOT_FOUND).json({
+                    status: ResponseCodes.NOT_FOUND,
+                    data: {},
+                    error: "BGV request not found",
+                    message: "BGV request not found"
+                })
+            }
             let bgvRequest = await BGVRequestProduct.findOne({
                 where: {
                     requestId: request_id,
@@ -820,6 +839,31 @@ module.exports = {
                 }
                 else if (allClosed) {
                     finalStatus = "CLOSED";
+                }
+            }
+            //update bgv verification data
+            if(verification_data && Object.keys(verification_data).length > 0){
+                await BGVRequest.update({
+                    ...verification_data,
+                    updatedBy: req.user.id
+                },{
+                    where:{
+                        id:request_id
+                    }
+                });
+                if(verification_data.employeeDetails && verification_data.employeeDetails.length){
+                    for(let emp of verification_data.employeeDetails){
+                        let updateEmp = {...emp,updatedBy: req.user.id};
+                        delete updateEmp.id;
+                        await BGVEmployment.update(
+                            updateEmp
+                        ,{
+                            where:{
+                                id:emp.id,
+                                bgvRequestId:request_id
+                            }
+                        });
+                    }
                 }
             }
             await BGVRequest.update(

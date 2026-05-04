@@ -28,8 +28,8 @@ const BGVRequestProduct = sequelize.define('bgv_request_product', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('NEW', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
-    defaultValue: 'NEW'
+    type: DataTypes.ENUM('SUBMITED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED','CLOSED'),
+    defaultValue: 'SUBMITED'
   },
   doc_1:{
     type: DataTypes.STRING,
