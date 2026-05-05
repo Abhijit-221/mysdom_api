@@ -98,7 +98,7 @@ let updateBGVStatusValidation = [
   body("status")
     .optional({ nullable: true, checkFalsy: true })
     .isIn(['SUBMITED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED', 'CLOSED'])
-    .withMessage("status must be NEW, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED or CLOSED"),
+    .withMessage("status must be SUBMITED, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED or CLOSED"),
   body("verification_data")
     .optional()
     .isObject()

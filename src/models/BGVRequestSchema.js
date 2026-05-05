@@ -76,7 +76,7 @@ const BGVRequest = sequelize.define('bgv_request', {
     }
   },
   req_code:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(50),
     allowNull: false,
     // unique: true
   },
@@ -86,17 +86,17 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: false
   },
   candidate_email: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     required: true,
     allowNull: true
   },
   candidate_phone: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(15),
     required: true,
     allowNull: true
   },
   gender: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(15),
     allowNull: true
   },
 
@@ -116,16 +116,16 @@ const BGVRequest = sequelize.define('bgv_request', {
   /* ---------------- IDENTITY CHECK ---------------- */
 
   id_type: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
   id_number: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(50),
     allowNull: true
   },
   id_doc: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   /* ---------------- CURRENT ADDRESS ---------------- */
@@ -136,17 +136,17 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   current_landmark: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   current_residency: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
   current_duration: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(30),
     allowNull: true
   },
   /* ---------------- PERMANENT ADDRESS ---------------- */
@@ -157,17 +157,17 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   permanent_landmark: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   permanent_residency: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
   permanent_duration: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(30),
     allowNull: true
   },
 
@@ -183,11 +183,11 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: true
   },
   address_detail:{
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   city:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
@@ -229,12 +229,12 @@ const BGVRequest = sequelize.define('bgv_request', {
   /* ---------------- EDUCATION CHECK ---------------- */
 
   institute_name: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   university: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
@@ -249,7 +249,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   roll_number: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
@@ -264,7 +264,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   passing_year: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(10),
     allowNull: true
   },
   degree_status:{//yes/no
@@ -272,25 +272,25 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: true
   },
   edu_doc: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   /* ---------------- CREDIT CHECK ---------------- */
   pan_card:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(20),
     allowNull: true
   },
   /* ---------------- SOCIAL MEDIA CHECK ---------------- */
   social_media_type:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
   social_media_id:{
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   nick_name:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
   
@@ -328,7 +328,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   verify_id_number: {
-    type: DataTypes.STRING(45),
+    type: DataTypes.STRING(50),
     allowNull: true
   },
 /* ---------------- CURRENT ADDRESS ---------------- */
@@ -339,12 +339,12 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   verify_current_landmark: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   verify_current_residency: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
@@ -360,12 +360,12 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   verify_permanent_landmark: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   verify_permanent_residency: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
@@ -385,22 +385,22 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: true
   },
   verify_address_detail:{
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   verify_city:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
   /* ---------------- EDUCATION CHECK ---------------- */
 
   verify_institute_name: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
   verify_university: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
 
@@ -415,7 +415,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   verify_roll_number: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
@@ -430,7 +430,7 @@ const BGVRequest = sequelize.define('bgv_request', {
   },
 
   verify_passing_year: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(10),
     allowNull: true
   },
   verify_degree_status:{//yes/no
@@ -440,7 +440,7 @@ const BGVRequest = sequelize.define('bgv_request', {
 
   /* ---------------- CREDIT CHECK ---------------- */
   verify_pan_card:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(20),
     allowNull: true
   },
 /* ---------------- SOCIAL MEDIA CHECK ---------------- */
@@ -449,11 +449,11 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: true
   },
   verify_social_media_id:{
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   verify_nick_name:{
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: true
   },
 
