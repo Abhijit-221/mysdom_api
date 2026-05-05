@@ -86,7 +86,7 @@ const BGVRequest = sequelize.define('bgv_request', {
     allowNull: false
   },
   candidate_email: {
-    type: DataTypes.STRING(100),
+    type: DataTypes.STRING,
     required: true,
     allowNull: true
   },

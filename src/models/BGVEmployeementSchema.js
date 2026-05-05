@@ -80,7 +80,6 @@ const BGVEmployment = sequelize.define("bgv_request_employments", {
   verify_isCurrent:{
     type: DataTypes.BOOLEAN,
     allowNull:true,
-    defaultValue:false
   },
   verify_employment_end: {
     type: DataTypes.DATEONLY,
