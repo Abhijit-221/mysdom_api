@@ -744,6 +744,7 @@ module.exports = {
                     mode_of_verification,
                     verifier_comment,
                     final_desc,
+                    final_discrepancy,
                     verification_data
                 } = req.body;
                 console.log('verification_data:', verification_data);
@@ -789,6 +790,7 @@ module.exports = {
                 mode_of_verification:mode_of_verification||bgvRequest.mode_of_verification,
                 verifier_comment:verifier_comment||bgvRequest.verifier_comment,
                 final_desc:final_desc||bgvRequest.final_desc,
+                final_discrepancy:final_discrepancy||bgvRequest.final_discrepancy,
                 updatedBy: req.user.id
             };
             if (req.files && Object.keys(req.files).length > 0) {

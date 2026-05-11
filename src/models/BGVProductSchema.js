@@ -51,6 +51,10 @@ const BGVRequestProduct = sequelize.define('bgv_request_product', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  final_discrepancy:{
+    type: DataTypes.ENUM('CLEAR', 'MINOR','DISCREPANCY'),
+    allowNull: true
+  },
   createdBy:{
     type: DataTypes.UUID,
     allowNull: false,

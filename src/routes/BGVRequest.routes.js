@@ -99,6 +99,10 @@ let updateBGVStatusValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isIn(['SUBMITED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'REJECTED', 'CLOSED'])
     .withMessage("status must be SUBMITED, IN_PROGRESS, ON_HOLD, COMPLETED, REJECTED or CLOSED"),
+  body("final_discrepancy")
+    .optional()
+    .isIn(['CLEAR', 'MINOR', 'DISCREPANCY'])
+    .withMessage("final_discrepancy must be CLEAR, MINOR or DISCREPANCY"),
   body("verification_data")
     .optional()
     .isObject()
